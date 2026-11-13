@@ -1,0 +1,2408 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dhammasoka Exam Browser - SMP</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Mammoth.js untuk parsing file Word (.docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dhammasoka: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                            800: '#92400e',
+                            900: '#78350f',
+                        },
+                        navy: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .pulse-dot {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col justify-between" oncontextmenu="return handleContextMenu(event)">
+
+    <!-- ================= HEADER UTAMA ================= -->
+    <header class="bg-navy-900 text-white shadow-lg border-b-4 border-dhammasoka-500 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-dhammasoka-500 to-dhammasoka-700 flex items-center justify-center shadow-md">
+                    <i class="ph-fill ph-student text-2xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg sm:text-xl tracking-tight leading-none flex items-center gap-2">
+                        DHAMMASOKA <span class="text-xs bg-dhammasoka-500 text-navy-900 font-extrabold px-2 py-0.5 rounded-md">CBT BROWSER</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Sistem Ujian Berbasis Komputer &amp; Smartphone Jenjang SMP</p>
+                </div>
+            </div>
+
+            <!-- Status Indikator di Kanan Header -->
+            <div class="flex items-center space-x-3">
+                <div id="security-badge" class="hidden sm:flex items-center space-x-1.5 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-full text-xs">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span class="text-slate-300 font-medium">Auto-Proctor Active</span>
+                </div>
+                <button id="btn-header-proctor" onclick="switchView('proctor-login')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition flex items-center gap-1.5">
+                    <i class="ph ph-shield-check text-dhammasoka-500 text-base"></i>
+                    <span>Portal Pengawas / Guru</span>
+                </button>
+                <button id="btn-header-home" onclick="confirmExitToHome()" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition items-center gap-1.5 hidden">
+                    <i class="ph ph-sign-out text-base"></i>
+                    <span>Keluar</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ================= MAIN CONTAINER ================= -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 relative">
+
+        <!-- 1. TAMPILAN LOGIN SISWA (PORTAL UTAMA) -->
+        <section id="view-student-login" class="max-w-4xl mx-auto my-4">
+            <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 grid grid-cols-1 lg:grid-cols-12">
+                <!-- Kolom Kiri: Info & Kamera Preview -->
+                <div class="lg:col-span-5 bg-gradient-to-br from-navy-900 via-slate-900 to-navy-800 text-white p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden">
+                    <div class="z-10">
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-dhammasoka-500/20 text-dhammasoka-400 border border-dhammasoka-500/30 mb-4">
+                            <i class="ph-fill ph-ShieldCheck"></i> Exam Browser Guard v2.5
+                        </span>
+                        <h2 class="text-2xl font-bold mb-2">Persiapan Ujian Siswa</h2>
+                        <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                            Pastikan wajah terlihat jelas pada kamera pengawas. Aplikasi akan mengunci layar dan mencatat aktivitas selama ujian berlangsung.
+                        </p>
+
+                        <!-- Kotak Tes Kamera -->
+                        <div class="bg-slate-800/90 rounded-2xl p-3 border border-slate-700 mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                    <span id="cam-indicator" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                                    Pratinjau Kamera Pengawas
+                                </span>
+                                <button type="button" onclick="initCamera()" class="text-xs bg-dhammasoka-600 hover:bg-dhammasoka-500 text-white px-2.5 py-1 rounded-lg transition font-medium flex items-center gap-1">
+                                    <i class="ph ph-camera-rotate"></i> Aktifkan Kamera
+                                </button>
+                            </div>
+                            <div class="relative aspect-video bg-black rounded-xl overflow-hidden flex items-center justify-center border border-slate-700">
+                                <video id="preview-video" autoplay="" playsinline="" muted="" class="w-full h-full object-cover transform scale-x-[-1] hidden"></video>
+                                <div id="cam-placeholder" class="text-center p-4">
+                                    <i class="ph ph-video-camera-slash text-4xl text-slate-500 mb-2"></i>
+                                    <p class="text-xs text-slate-400">Kamera belum aktif. Klik tombol <b>Aktifkan Kamera</b> untuk melanjutkan ujian.</p>
+                                </div>
+                                <div id="cam-overlay-badge" class="hidden absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-md text-[10px] text-emerald-400 font-mono flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 pulse-dot"></span> REC PROCTORING
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="z-10 text-xs text-slate-400 space-y-1.5 border-t border-slate-700/80 pt-4">
+                        <div class="flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-emerald-400"></i>
+                            <span>Kompatibel di Smartphone (Android/iOS) &amp; Laptop</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="ph-fill ph-check-circle text-emerald-400"></i>
+                            <span>Deteksi perpindahan tab &amp; penguncian layar penuh</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Form Input Siswa -->
+                <div class="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-center">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-bold text-slate-800">Masuk Ruang Ujian SMP</h3>
+                        <p class="text-sm text-slate-500">Lengkapi identitas diri dan minta Token/Passcode dari Pengawas Ujian.</p>
+                    </div>
+
+                    <form id="form-student-login" onsubmit="handleStudentStartExam(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Nama Lengkap Siswa</label>
+                            <div class="relative">
+                                <i class="ph ph-user absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                <input type="text" id="std-name" required="" placeholder="Contoh: Siddhartha Gautama" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-dhammasoka-500 focus:border-dhammasoka-500 outline-none text-sm transition">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">NISN / No. Peserta</label>
+                                <div class="relative">
+                                    <i class="ph ph-identification-card absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                    <input type="text" id="std-nisn" required="" placeholder="0012345678" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-dhammasoka-500 focus:border-dhammasoka-500 outline-none text-sm transition">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Kelas Jenjang SMP</label>
+                                <div class="relative">
+                                    <i class="ph ph-chalkboard-teacher absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                    <select id="std-class" required="" class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-dhammasoka-500 focus:border-dhammasoka-500 outline-none text-sm transition">
+                                        <option value="VII-A">Kelas VII - A</option>
+                                        <option value="VII-B">Kelas VII - B</option>
+                                        <option value="VIII-A">Kelas VIII - A</option>
+                                        <option value="VIII-B">Kelas VIII - B</option>
+                                        <option value="IX-A">Kelas IX - A</option>
+                                        <option value="IX-B">Kelas IX - B</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Mata Pelajaran Ujian Aktif</label>
+                            <div class="relative flex items-center justify-between px-4 py-2.5 bg-dhammasoka-50/70 border border-dhammasoka-300 rounded-xl">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-fill ph-book-bookmark text-dhammasoka-600 text-lg"></i>
+                                    <span id="std-active-subject-display" class="text-sm font-bold text-navy-900">BAHASA INGGRIS 7</span>
+                                </div>
+                                <span id="std-active-qcount-badge" class="text-[11px] font-bold bg-dhammasoka-500 text-navy-900 px-2.5 py-0.5 rounded-lg">30 Soal</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Passcode Ujian (Dari Pengawas)</label>
+                            <div class="relative">
+                                <i class="ph ph-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                                <input type="password" id="std-passcode" required="" autocomplete="off" placeholder="Masukkan Passcode Rahasia Pengawas" class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-dhammasoka-500 focus:border-dhammasoka-500 outline-none text-sm transition tracking-widest">
+                                <button type="button" onclick="togglePasswordVisibility('std-passcode', 'eye-std')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <i id="eye-std" class="ph ph-eye text-lg"></i>
+                                </button>
+                            </div>
+                            <p class="text-[11px] text-slate-400 mt-1">*Passcode bersifat rahasia dan hanya diberikan oleh pengawas ruang saat ujian dimulai.</p>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="w-full bg-gradient-to-r from-navy-900 to-slate-800 hover:from-dhammasoka-600 hover:to-dhammasoka-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition duration-200 flex items-center justify-center gap-2">
+                                <i class="ph-bold ph-lock-key-open text-lg"></i>
+                                <span>Mulai Kerjakan Ujian Sekarang</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. TAMPILAN RUANG UJIAN SISWA (EXAM INTERFACE) -->
+        <section id="view-student-exam" class="hidden">
+            <!-- Top Info Bar Ujian -->
+            <div class="bg-white rounded-2xl shadow-md p-4 mb-6 border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-11 h-11 rounded-xl bg-dhammasoka-100 text-dhammasoka-700 flex items-center justify-center font-bold text-lg">
+                        <i class="ph-fill ph-book-open-text text-2xl"></i>
+                    </div>
+                    <div>
+                        <span id="exam-active-subject" class="text-xs font-bold uppercase tracking-wider text-dhammasoka-600 bg-dhammasoka-50 px-2 py-0.5 rounded-md border border-dhammasoka-200">MATA PELAJARAN</span>
+                        <h2 id="exam-student-info" class="font-bold text-slate-800 text-sm sm:text-base mt-0.5">Nama Siswa (Kelas)</h2>
+                    </div>
+                </div>
+
+                <!-- Indikator Pelanggaran & Waktu -->
+                <div class="flex items-center gap-3 sm:gap-4 ml-auto">
+                    <div class="bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                        <i class="ph-fill ph-warning-octagon text-rose-600 text-lg"></i>
+                        <div>
+                            <p class="text-[10px] uppercase font-bold text-rose-400 leading-none">Peringatan Fokus</p>
+                            <p id="exam-violation-count" class="text-xs font-extrabold text-rose-700">0 / 3 Pelanggaran</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-navy-900 text-white px-4 py-2 rounded-xl flex items-center gap-2.5 shadow-inner">
+                        <i class="ph ph-timer text-dhammasoka-400 text-xl animate-pulse"></i>
+                        <div>
+                            <p class="text-[10px] uppercase tracking-wider text-slate-400 leading-none">Sisa Waktu</p>
+                            <p id="exam-timer" class="font-mono font-bold text-base sm:text-lg tracking-wider text-white">60:00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid Soal & Navigasi + Kamera Pengawas -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Kolom Soal Utama -->
+                <div class="lg:col-span-8 xl:col-span-9 flex flex-col justify-between bg-white rounded-3xl shadow-lg border border-slate-200 p-6 sm:p-8 min-h-[460px]">
+                    <div>
+                        <!-- Header Nomor Soal & Ukuran Font -->
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
+                            <div class="flex items-center gap-2">
+                                <span class="bg-navy-900 text-white font-bold px-3.5 py-1.5 rounded-xl text-sm">
+                                    Soal No. <span id="q-current-number">1</span>
+                                </span>
+                                <span id="q-total-badge" class="text-xs text-slate-400 font-medium">dari 10 Soal</span>
+                            </div>
+                            <div class="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+                                <span class="text-xs text-slate-500 px-2">Ukuran Teks:</span>
+                                <button onclick="changeFontSize('text-sm')" class="px-2 py-1 text-xs font-bold rounded-lg hover:bg-white transition">A-</button>
+                                <button onclick="changeFontSize('text-base')" class="px-2 py-1 text-sm font-bold rounded-lg bg-white shadow-sm transition">A</button>
+                                <button onclick="changeFontSize('text-lg')" class="px-2 py-1 text-base font-bold rounded-lg hover:bg-white transition">A+</button>
+                            </div>
+                        </div>
+
+                        <!-- Konten Pertanyaan -->
+                        <div id="question-text" class="text-slate-800 text-base leading-relaxed font-medium mb-6 space-y-2">
+                            Memuat soal...
+                        </div>
+
+                        <!-- Pilihan Jawaban (A, B, C, D) -->
+                        <div id="question-options" class="space-y-3"></div>
+                    </div>
+
+                    <!-- Tombol Navigasi Bawah Soal -->
+                    <div class="border-t border-slate-100 pt-6 mt-8 flex flex-wrap items-center justify-between gap-3">
+                        <button id="btn-prev-q" onclick="navigateQuestion(-1)" class="px-4 py-2.5 rounded-xl border border-slate-300 text-slate-700 hover:bg-slate-100 font-semibold text-sm flex items-center gap-2 transition disabled:opacity-40">
+                            <i class="ph-bold ph-arrow-left"></i> Soal Sebelumnya
+                        </button>
+
+                        <label class="inline-flex items-center gap-2 cursor-pointer bg-amber-50 border border-amber-300 text-amber-800 px-4 py-2.5 rounded-xl text-sm font-semibold hover:bg-amber-100 transition">
+                            <input type="checkbox" id="chk-doubt" onchange="toggleDoubtCurrentQuestion()" class="w-4 h-4 accent-amber-500 rounded">
+                            <span>Ragu-ragu</span>
+                        </label>
+
+                        <button id="btn-next-q" onclick="navigateQuestion(1)" class="px-5 py-2.5 rounded-xl bg-navy-900 hover:bg-slate-800 text-white font-semibold text-sm flex items-center gap-2 transition">
+                            <span>Soal Selanjutnya</span> <i class="ph-bold ph-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Kolom Kanan: Kamera Live & Navigasi Nomor Soal -->
+                <div class="lg:col-span-4 xl:col-span-3 space-y-6">
+                    <!-- Kamera Pengawas Live Widget -->
+                    <div class="bg-navy-900 text-white rounded-3xl p-4 shadow-lg border border-slate-800">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <div class="flex items-center gap-2">
+                                <span class="w-2.5 h-2.5 rounded-full bg-red-500 pulse-dot"></span>
+                                <span class="text-xs font-bold tracking-wider uppercase text-slate-200">Kamera Pengawas Aktif</span>
+                            </div>
+                            <i class="ph-fill ph-video-camera text-dhammasoka-400"></i>
+                        </div>
+                        <div class="relative aspect-video bg-black rounded-2xl overflow-hidden border border-slate-700">
+                            <video id="exam-live-video" autoplay="" playsinline="" muted="" class="w-full h-full object-cover transform scale-x-[-1]"></video>
+                            <div id="camera-guard-status" class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400">
+                                AI Optical Guard: ON
+                            </div>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-2 text-center">
+                            Sensor aktif: Menutup lensa kamera atau berpindah aplikasi dihitung sebagai pelanggaran.
+                        </p>
+                    </div>
+
+                    <!-- Daftar Nomor Soal -->
+                    <div class="bg-white rounded-3xl p-5 shadow-lg border border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+                            <span>Navigasi Nomor Soal</span>
+                            <span id="answered-progress" class="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">0 Terjawab</span>
+                        </h3>
+                        <div id="question-nav-grid" class="grid grid-cols-5 gap-2 mb-5"></div>
+
+                        <div class="flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100 pt-3 mb-4">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-emerald-600 inline-block"></span> Dijawab</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-amber-400 inline-block"></span> Ragu</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded bg-slate-200 inline-block"></span> Kosong</span>
+                        </div>
+
+                        <button onclick="openSubmitConfirmation()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold py-3 px-4 rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                            <i class="ph-bold ph-paper-plane-tilt text-lg"></i>
+                            <span>Selesai &amp; Kumpulkan Ujian</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. TAMPILAN HASIL UJIAN SISWA -->
+        <section id="view-student-result" class="hidden max-w-2xl mx-auto my-8">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-8 text-center">
+                <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <i class="ph-fill ph-check-circle text-5xl"></i>
+                </div>
+                <h2 class="text-2xl font-extrabold text-slate-800">Ujian Telah Selesai!</h2>
+                <p class="text-sm text-slate-500 mt-1 mb-6">Jawaban Anda telah direkam dan dikirim ke sistem penilaian sekolah.</p>
+
+                <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200 text-left space-y-3 mb-6">
+                    <div class="flex justify-between text-sm border-b border-slate-200/70 pb-2">
+                        <span class="text-slate-500">Nama Siswa:</span>
+                        <span id="res-name" class="font-bold text-slate-800">-</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-b border-slate-200/70 pb-2">
+                        <span class="text-slate-500">NISN &amp; Kelas:</span>
+                        <span id="res-class" class="font-bold text-slate-800">-</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-b border-slate-200/70 pb-2">
+                        <span class="text-slate-500">Mata Pelajaran:</span>
+                        <span id="res-subject" class="font-bold text-dhammasoka-700">-</span>
+                    </div>
+                    <div class="flex justify-between text-sm border-b border-slate-200/70 pb-2">
+                        <span class="text-slate-500">Jawaban Benar:</span>
+                        <span id="res-correct" class="font-semibold text-emerald-600">0 / 0</span>
+                    </div>
+                    <div class="flex justify-between items-center pt-1">
+                        <span class="text-slate-600 font-bold">Skor Akhir Ujian:</span>
+                        <span id="res-score" class="text-3xl font-extrabold text-navy-900 bg-dhammasoka-100 px-4 py-1 rounded-xl border border-dhammasoka-300">100</span>
+                    </div>
+                </div>
+
+                <!-- Status Pengiriman Google Sheets -->
+                <div id="sheets-sync-status" class="mb-6 p-3.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200">
+                    <i class="ph ph-cloud-arrow-up text-lg"></i>
+                    <span>Menyinkronkan skor ke Google Sheets...</span>
+                </div>
+
+                <button onclick="resetToStudentLogin()" class="bg-navy-900 hover:bg-slate-800 text-white font-semibold px-6 py-3 rounded-xl text-sm transition inline-flex items-center gap-2">
+                    <i class="ph ph-house"></i> Kembali ke Halaman Utama
+                </button>
+            </div>
+        </section>
+
+        <!-- 4. TAMPILAN LOGIN PENGAWAS / GURU -->
+        <section id="view-proctor-login" class="max-w-md mx-auto my-12 hidden">
+            <div class="bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
+                <div class="w-14 h-14 rounded-2xl bg-navy-900 text-dhammasoka-400 flex items-center justify-center mb-4 shadow-md">
+                    <i class="ph-fill ph-shield-star text-3xl"></i>
+                </div>
+                <h2 class="text-xl font-bold text-slate-800">Otentikasi Pengawas &amp; Guru</h2>
+                <p class="text-xs text-slate-500 mt-1 mb-6">Area terbatas khusus Pengawas Ruang dan Guru Mata Pelajaran untuk mengelola bank soal Word dan integrasi Google Sheets.</p>
+
+                <form onsubmit="handleProctorLogin(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">Passcode Pengawas</label>
+                        <div class="relative">
+                            <i class="ph ph-lock-key absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-lg"></i>
+                            <input type="password" id="proc-passcode-input" required="" autocomplete="off" placeholder="Masukkan Passcode Khusus Pengawas" class="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-navy-800 outline-none text-sm tracking-widest">
+                            <button type="button" onclick="togglePasswordVisibility('proc-passcode-input', 'eye-proc')" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                <i id="eye-proc" class="ph ph-eye text-lg"></i>
+                            </button>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">*Passcode tidak ditampilkan di layar untuk mencegah akses oleh siswa.</p>
+                    </div>
+
+                    <div class="flex items-center gap-3 pt-2">
+                        <button type="button" onclick="switchView('student-login')" class="w-1/3 py-2.5 px-4 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition">
+                            Batal
+                        </button>
+                        <button type="submit" class="w-2/3 bg-navy-900 hover:bg-slate-800 text-white font-semibold py-2.5 px-4 rounded-xl shadow-md text-xs sm:text-sm transition flex items-center justify-center gap-1.5">
+                            <i class="ph-bold ph-sign-in"></i> Masuk Dashboard
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <!-- 5. DASHBOARD PENGAWAS & MANAJEMEN BANK SOAL GURU -->
+        <section id="view-proctor-dashboard" class="space-y-6 hidden">
+            <!-- Header Dashboard Pengawas -->
+            <div class="bg-navy-900 text-white rounded-3xl p-6 shadow-lg flex flex-wrap items-center justify-between gap-4">
+                <div>
+                    <span class="text-xs font-bold uppercase tracking-wider text-dhammasoka-400">Panel Kontrol Administrator &amp; Guru</span>
+                    <h2 class="text-2xl font-bold mt-0.5">Manajemen Ujian &amp; Bank Soal SMP</h2>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button onclick="switchProctorTab('tab-word')" id="btn-tab-word" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-file-doc"></i> Bank Soal &amp; Upload Word
+                    </button>
+                    <button onclick="switchProctorTab('tab-live-cam')" id="btn-tab-live-cam" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-red-500 pulse-dot"></span>
+                        <i class="ph-bold ph-video-camera"></i> Live Kamera Siswa (CCTV)
+                    </button>
+                    <button onclick="switchProctorTab('tab-sheets')" id="btn-tab-sheets" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-dhammasoka-500 text-navy-900 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-google-logo"></i> Google Sheets &amp; Apps Script
+                    </button>
+                    <button onclick="switchProctorTab('tab-security')" id="btn-tab-security" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-key"></i> Pengaturan Passcode
+                    </button>
+                    <button onclick="exportReadyExamFile()" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-500 hover:bg-emerald-400 text-navy-900 shadow-md transition flex items-center gap-1.5">
+                        <i class="ph-bold ph-share-network"></i> Unduh Paket Ujian Siap Sebar (.html)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Banner Panduan Distribusi ke Siswa -->
+            <div class="bg-gradient-to-r from-emerald-900 to-teal-900 text-white rounded-3xl p-5 shadow-md border border-emerald-700 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0 text-emerald-300">
+                        <i class="ph-fill ph-rocket-launch text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm sm:text-base text-emerald-200">Cara Membagikan Ujian Ini ke HP / Laptop Siswa:</h3>
+                        <p class="text-xs text-emerald-100/90 mt-0.5 leading-relaxed">
+                            1. Isi <b>Nama Mapel</b>, unggah <b>Soal Word (.docx)</b>, dan simpan <b>URL Google Sheets</b> di bawah.<br>
+                            2. Klik tombol hijau <b>"Unduh Paket Ujian Siap Sebar (.html)"</b> di kanan atas.<br>
+                            3. Bagikan file tersebut via <b>Link Hosting Gratis (Netlify Drop / GitHub Pages / Google Drive)</b> atau grup WhatsApp kelas. Saat siswa membukanya, soal &amp; pengaturan Anda sudah otomatis terpasang!
+                        </p>
+                    </div>
+                </div>
+                <button onclick="exportReadyExamFile()" class="shrink-0 bg-white hover:bg-emerald-50 text-emerald-950 font-extrabold text-xs px-4 py-3 rounded-2xl shadow-lg transition flex items-center gap-2">
+                    <i class="ph-bold ph-download-simple text-base text-emerald-700"></i>
+                    <span>Unduh File Ujian Siswa</span>
+                </button>
+            </div>
+
+            <!-- TAB 1: MANAJEMEN BANK SOAL & UPLOAD MS WORD (.DOCX) -->
+            <div id="tab-word" class="grid grid-cols-1 lg:grid-cols-12 gap-6 hidden">
+                <!-- Kiri: Upload Word & Form Tambah Soal -->
+                <div class="lg:col-span-5 space-y-6">
+                    <!-- Box Upload Word (.docx) -->
+                    <div class="bg-white rounded-3xl p-6 shadow-md border border-slate-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold text-slate-800 flex items-center gap-2">
+                                <i class="ph-fill ph-microsoft-word-logo text-blue-600 text-2xl"></i>
+                                <span>Sisipkan Naskah Soal Word (.docx)</span>
+                            </h3>
+                            <button onclick="downloadSampleWordTemplate()" class="text-xs text-blue-600 hover:underline font-semibold flex items-center gap-1">
+                                <i class="ph ph-download-simple"></i> Unduh Contoh Format
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                            Aplikasi difokuskan untuk <b>1 Mata Pelajaran Aktif</b>. Guru dapat mengatur nama mata pelajaran ujian saat ini dan langsung mengunggah naskah soal Microsoft Word (<b>.docx</b>).
+                        </p>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Mata Pelajaran Ujian (Diisi Manual oleh Guru)</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="admin-single-subject-input" value="" placeholder="Ketik Nama Mata Pelajaran SMP..." class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500">
+                                    <button type="button" onclick="updateSingleSubjectName()" class="bg-navy-900 hover:bg-slate-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl shrink-0 transition">
+                                        Simpan Mapel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Dropzone Word -->
+                            <label class="flex flex-col items-center justify-center border-2 border-dashed border-blue-300 bg-blue-50/50 hover:bg-blue-50 rounded-2xl p-5 cursor-pointer transition text-center">
+                                <i class="ph-duotone ph-cloud-arrow-up text-3xl text-blue-600 mb-1"></i>
+                                <span class="text-xs font-bold text-blue-900">Klik untuk pilih file Naskah Soal (.docx)</span>
+                                <span id="word-filename-display" class="text-[11px] text-slate-500 mt-0.5">Berhasil mengimpor 30 soal dari UH 4 Ganjil 26-27.docx</span>
+                                <input type="file" id="word-file-input" accept=".docx" onchange="handleWordUpload(event)" class="hidden">
+                            </label>
+
+                            <!-- Panduan Format Word -->
+                            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                                <p class="font-bold text-slate-700">Format Penulisan di Microsoft Word:</p>
+                                <pre class="font-mono text-[10px] bg-white p-2 rounded border border-slate-200 overflow-x-auto">1. Pertanyaan nomor satu ditulis di sini?
+A. Pilihan Pertama
+B. Pilihan Kedua
+C. Pilihan Ketiga
+D. Pilihan Keempat
+KUNCI: B</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Box Tambah Soal Manual -->
+                    <div class="bg-white rounded-3xl p-6 shadow-md border border-slate-200">
+                        <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-2">
+                            <i class="ph-fill ph-plus-circle text-emerald-600 text-lg"></i>
+                            <span>Tambah Soal Manual</span>
+                        </h3>
+                        <form onsubmit="handleAddManualQuestion(event)" class="space-y-3 text-xs">
+                            <div>
+                                <label class="font-semibold text-slate-600 block mb-1">Teks Pertanyaan</label>
+                                <textarea id="manual-q-text" required="" rows="2" placeholder="Ketik soal di sini..." class="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl outline-none"></textarea>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="text" id="manual-opt-a" required="" placeholder="Opsi A" class="p-2 bg-slate-50 border border-slate-300 rounded-lg">
+                                <input type="text" id="manual-opt-b" required="" placeholder="Opsi B" class="p-2 bg-slate-50 border border-slate-300 rounded-lg">
+                                <input type="text" id="manual-opt-c" required="" placeholder="Opsi C" class="p-2 bg-slate-50 border border-slate-300 rounded-lg">
+                                <input type="text" id="manual-opt-d" required="" placeholder="Opsi D" class="p-2 bg-slate-50 border border-slate-300 rounded-lg">
+                            </div>
+                            <div class="flex items-center justify-between gap-3 pt-1">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-semibold text-slate-600">Kunci Jawaban:</span>
+                                    <select id="manual-key" class="p-2 bg-slate-50 border border-slate-300 rounded-lg font-bold">
+                                        <option value="A">A</option>
+                                        <option value="B">B</option>
+                                        <option value="C">C</option>
+                                        <option value="D">D</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl transition">
+                                    + Simpan Soal
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Kanan: Daftar Bank Soal Aktif -->
+                <div class="lg:col-span-7 bg-white rounded-3xl p-6 shadow-md border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-4 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-base" id="admin-bank-title">Bank Soal: BAHASA INGGRIS 7</h3>
+                                <p class="text-xs text-slate-400">Soal yang tampil di bawah ini akan diujikan kepada siswa.</p>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span id="admin-q-count" class="text-xs font-bold bg-dhammasoka-100 text-dhammasoka-800 px-3 py-1 rounded-full">30 Soal</span>
+                                <button onclick="clearSubjectQuestions()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1 rounded-xl font-semibold transition">
+                                    Kosongkan Mapel Ini
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="admin-question-list" class="space-y-3 max-h-[520px] overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB BARU: LIVE KAMERA SISWA (CCTV PROCTORING MONITOR) -->
+            <div id="tab-live-cam" class="hidden space-y-6">
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-slate-200">
+                    <div class="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4 mb-6">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center">
+                                <i class="ph-fill ph-screencast text-2xl"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="font-bold text-slate-800 text-lg">Layar Pemantauan Kamera Live Siswa (Real-Time CCTV)</h3>
+                                    <span class="bg-rose-100 text-rose-700 text-[10px] font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-rose-600 pulse-dot"></span> LIVE FEED
+                                    </span>
+                                </div>
+                                <p class="text-xs text-slate-500">Perangkat siswa otomatis mengirimkan tangkapan kamera, progres nomor soal, dan jumlah pelanggaran setiap beberapa detik melalui Google Apps Script.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <span id="cctv-active-count" class="text-xs font-bold bg-navy-900 text-dhammasoka-400 px-3.5 py-2 rounded-xl">0 Siswa Terpantau</span>
+                            <button onclick="fetchLiveCameraFeedsFromCloud()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                                <i class="ph-bold ph-arrows-clockwise"></i> Segarkan Kamera Sekarang
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Status Koneksi Cloud CCTV -->
+                    <div id="cctv-connection-banner" class="mb-5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-600">
+                        <span class="flex items-center gap-2">
+                            <i class="ph-fill ph-info text-blue-600 text-base"></i>
+                            <span>Klik pada kartu siswa di bawah atau pilih nama siswa pada kotak pencarian untuk <b>mengawasi siswa satu per satu secara fokus (Spotlight)</b>.</span>
+                        </span>
+                        <span id="cctv-last-sync" class="font-mono text-[11px] text-slate-400">Belum disinkronkan</span>
+                    </div>
+
+                    <!-- Filter & Pilihan Mengawasi Siswa Satu Per Satu -->
+                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-6 bg-slate-100 p-3.5 rounded-2xl border border-slate-200">
+                        <div class="sm:col-span-5">
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Pilih Siswa Satu Per Satu (Mode Fokus):</label>
+                            <select id="cctv-select-student" onchange="handleSelectFocusStudent(this.value)" class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-semibold outline-none focus:ring-2 focus:ring-navy-800"><option value="ALL">-- Tampilkan Semua Siswa (0 Siswa) --</option></select>
+                        </div>
+                        <div class="sm:col-span-4">
+                            <label class="block text-[11px] font-bold uppercase text-slate-500 mb-1">Cari Nama / NISN / Kelas:</label>
+                            <input type="text" id="cctv-search-input" oninput="renderLiveCctvGrid()" placeholder="Ketik nama siswa atau kelas..." class="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs outline-none focus:ring-2 focus:ring-navy-800">
+                        </div>
+                        <div class="sm:col-span-3 flex items-end gap-2">
+                            <button type="button" onclick="navigateSpotlightStudent(-1)" class="w-1/2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1">
+                                <i class="ph-bold ph-caret-left"></i> Sebelumnya
+                            </button>
+                            <button type="button" onclick="navigateSpotlightStudent(1)" class="w-1/2 bg-navy-900 hover:bg-slate-800 text-white font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1">
+                                Berikutnya <i class="ph-bold ph-caret-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Layar Fokus Mengawasi 1 Siswa (Spotlight Mode) -->
+                    <div id="cctv-spotlight-panel" class="hidden mb-6 bg-gradient-to-br from-navy-900 to-slate-900 text-white rounded-3xl p-5 sm:p-6 shadow-xl border-2 border-dhammasoka-500"></div>
+
+                    <!-- Grid Kamera Siswa -->
+                    <div id="live-cctv-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+                </div>
+            </div>
+
+            <!-- TAB 2: INTEGRASI GOOGLE SHEETS & APPS SCRIPT + REKAP SKOR -->
+            <div id="tab-sheets" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Kiri: Konfigurasi Webhook & Kode Google Apps Script -->
+                <div class="lg:col-span-6 bg-white rounded-3xl p-6 shadow-md border border-slate-200 space-y-4">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                            <i class="ph-fill ph-table text-2xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-slate-800">Koneksi Google Sheets &amp; Apps Script</h3>
+                            <p class="text-xs text-slate-500">Otomatisasi pencatatan nilai ujian siswa secara real-time ke Spreadsheet.</p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-600 mb-1">URL Web App Google Apps Script</label>
+                        <input type="url" id="gas-url-input" placeholder="https://script.google.com/macros/s/AKfycb.../exec" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-emerald-500">
+                        <div class="flex items-center gap-2 mt-2">
+                            <button onclick="saveGasUrl()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+                                <i class="ph-bold ph-floppy-disk"></i> Simpan URL Endpoint
+                            </button>
+                            <button onclick="testGasConnection()" class="bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition flex items-center gap-1.5">
+                                <i class="ph-bold ph-plugs-connected"></i> Kirim Data Uji Coba
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-100 pt-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-bold text-slate-700">Kode Google Apps Script (Mendukung Skor + Live Kamera CCTV + Gambar Asli di Sheets):</span>
+                            <button onclick="copyGasScript()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1">
+                                <i class="ph ph-copy"></i> Salin Kode
+                            </button>
+                        </div>
+                        <pre id="gas-code-block" class="bg-slate-900 text-emerald-400 p-3.5 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed">function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var data = JSON.parse(e.postData.contents);
+
+  // 1. Jika paket kiriman adalah Tangkap Kamera Live (CCTV Snapshot)
+  if (data.action === "camera_snapshot") {
+    var camSheet = ss.getSheetByName("LIVE_CAMERA") || ss.insertSheet("LIVE_CAMERA");
+    if (camSheet.getLastRow() === 0) {
+      camSheet.appendRow(["NISN", "Nama", "Kelas", "Mapel", "Progres", "Pelanggaran", "WaktuUpdate", "FotoBase64", "Visual Foto Kamera"]);
+      camSheet.setColumnWidth(9, 180);
+    }
+    var rows = camSheet.getDataRange().getValues();
+    var foundRow = -1;
+    for (var i = 1; i &lt; rows.length; i++) {
+      if (String(rows[i][0]) === String(data.nisn)) {
+        foundRow = i + 1;
+        break;
+      }
+    }
+    var rowData = [data.nisn, data.name, data.className, data.subject, data.progress, data.violations, data.timestamp, data.snapshot];
+    var targetRow = foundRow &gt; 0 ? foundRow : camSheet.getLastRow() + 1;
+
+    camSheet.getRange(targetRow, 1, 1, 8).setValues([rowData]);
+    camSheet.setRowHeight(targetRow, 110);
+
+    // Render Base64 menjadi Gambar Asli langsung di dalam sel Google Sheets (Kolom ke-9)
+    try {
+      var imgCell = SpreadsheetApp.newCellImage().setSourceUrl(data.snapshot).build();
+      camSheet.getRange(targetRow, 9).setValue(imgCell);
+    } catch (err) {}
+
+    return ContentService.createTextOutput(JSON.stringify({status: "cam_updated"})).setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // 2. Jika paket kiriman adalah Nilai Akhir Ujian Siswa
+  var sheet = ss.getSheets()[0];
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(["Waktu", "Nama Siswa", "NISN", "Kelas", "Mata Pelajaran", "Benar", "Total Soal", "Skor Akhir", "Pelanggaran"]);
+  }
+  sheet.appendRow([data.timestamp, data.name, data.nisn, data.className, data.subject, data.correct, data.total, data.score, data.violations]);
+  return ContentService.createTextOutput(JSON.stringify({status: "score_saved"})).setMimeType(ContentService.MimeType.JSON);
+}
+
+// Endpoint GET untuk diambil oleh Dashboard Live CCTV Pengawas
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var camSheet = ss.getSheetByName("LIVE_CAMERA");
+  if (!camSheet || camSheet.getLastRow() &lt;= 1) {
+    return ContentService.createTextOutput(JSON.stringify({feeds: []})).setMimeType(ContentService.MimeType.JSON);
+  }
+  var values = camSheet.getDataRange().getValues();
+  var feeds = [];
+  for (var i = 1; i &lt; values.length; i++) {
+    feeds.push({
+      nisn: values[i][0],
+      name: values[i][1],
+      className: values[i][2],
+      subject: values[i][3],
+      progress: values[i][4],
+      violations: values[i][5],
+      timestamp: values[i][6],
+      snapshot: values[i][7]
+    });
+  }
+  return ContentService.createTextOutput(JSON.stringify({feeds: feeds})).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                    </div>
+                </div>
+
+                <!-- Kanan: Log Pencatatan Skor Siswa Lokal & Status Sinkronisasi -->
+                <div class="lg:col-span-6 bg-white rounded-3xl p-6 shadow-md border border-slate-200 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800">Riwayat Nilai Siswa Sesi Ini</h3>
+                                <p class="text-xs text-slate-400">Daftar nilai yang terekam dan dikirim ke Google Sheets.</p>
+                            </div>
+                            <button onclick="exportLocalScoresCSV()" class="text-xs bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1">
+                                <i class="ph-bold ph-file-csv"></i> Unduh CSV
+                            </button>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                        <th class="py-2.5 px-3 font-bold">Siswa</th>
+                                        <th class="py-2.5 px-3 font-bold">Kelas</th>
+                                        <th class="py-2.5 px-3 font-bold">Mapel</th>
+                                        <th class="py-2.5 px-3 font-bold">Skor</th>
+                                        <th class="py-2.5 px-3 font-bold">Status Cloud</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="score-log-tbody" class="divide-y divide-slate-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: PENGATURAN KEAMANAN & PASSCODE TERSEMBUNYI -->
+            <div id="tab-security" class="hidden max-w-2xl mx-auto bg-white rounded-3xl p-6 sm:p-8 shadow-md border border-slate-200 space-y-6">
+                <div class="flex items-center gap-3 border-b border-slate-100 pb-4">
+                    <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center">
+                        <i class="ph-fill ph-lock-laminated text-2xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-lg">Manajemen Passcode Rahasia</h3>
+                        <p class="text-xs text-slate-500">Sesuai protokol keamanan Dhammasoka Exam Browser, passcode disembunyikan sepenuhnya dari layar utama.</p>
+                    </div>
+                </div>
+
+                <form onsubmit="handleUpdatePasscodes(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Ubah Passcode Ruang Ujian Siswa</label>
+                        <input type="password" id="new-student-passcode" required="" placeholder="Masukkan Passcode Baru untuk Siswa" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-dhammasoka-500">
+                        <p class="text-[11px] text-slate-400 mt-1">Passcode ini diberikan secara lisan/papan tulis oleh pengawas kepada siswa saat ujian dimulai.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Ubah Passcode Akses Pengawas / Guru</label>
+                        <input type="password" id="new-proctor-passcode" required="" placeholder="Masukkan Passcode Baru untuk Pengawas" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-dhammasoka-500">
+                        <p class="text-[11px] text-slate-400 mt-1">Digunakan untuk membuka menu Bank Soal dan Pengaturan ini.</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-600 mb-1">Durasi Waktu Ujian (Menit)</label>
+                        <input type="number" id="exam-duration-input" min="5" max="180" value="60" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm outline-none focus:ring-2 focus:ring-dhammasoka-500">
+                    </div>
+
+                    <div class="pt-2">
+                        <button type="submit" class="bg-navy-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition flex items-center gap-2">
+                            <i class="ph-bold ph-check-circle"></i> Perbarui Pengaturan Keamanan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ================= MODAL NOTIFIKASI & KONFIRMASI CUSTOM (TANPA ALERT) ================= -->
+    <div id="custom-modal" class="fixed inset-0 z-50 items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 hidden">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 transform transition-all">
+            <div class="flex items-start gap-3.5">
+                <div id="modal-icon-box" class="w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                    <i id="modal-icon" class="ph-fill ph-check-circle text-2xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 id="modal-title" class="font-bold text-slate-800 text-base">Endpoint Tersimpan</h4>
+                    <p id="modal-message" class="text-xs sm:text-sm text-slate-600 mt-1 leading-relaxed">URL Web App Google Apps Script berhasil disimpan. Setiap siswa yang menyelesaikan ujian akan otomatis tercatat ke Google Sheets Anda.</p>
+                </div>
+            </div>
+            <div id="modal-actions" class="mt-6 flex justify-end gap-2">
+                <button id="modal-btn-cancel" onclick="closeCustomModal()" class="hidden px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition">
+                    Batal
+                </button>
+                <button id="modal-btn-ok" onclick="closeCustomModal()" class="px-5 py-2 rounded-xl bg-navy-900 hover:bg-slate-800 text-white text-xs font-semibold transition">Mengerti</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= FOOTER ================= -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-2">
+            <p class="font-medium">© 2026 <b>Dhammasoka Exam Browser</b> — Jenjang Sekolah Menengah Pertama (SMP).</p>
+            <p class="flex items-center gap-1.5">
+                <i class="ph-fill ph-shield-check text-emerald-600"></i>
+                <span>Dilindungi Kamera Pengawas &amp; Enkripsi Passcode</span>
+            </p>
+        </div>
+    </footer>
+
+    <!-- ================= JAVASCRIPT LOGIC ================= -->
+    <script>
+        /* ============================================================================
+         * 1. KEAMANAN PASSCODE (HASHED - TIDAK DITAMPILKAN DI APLIKASI)
+         * ============================================================================ */
+        function simpleHash(str) {
+            let hash = 5381;
+            const clean = String(str).trim();
+            for (let i = 0; i < clean.length; i++) {
+                hash = ((hash << 5) + hash) + clean.charCodeAt(i);
+            }
+            return (hash >>> 0).toString(16);
+        }
+
+        // Default Passcode Siswa: SMP2026 | Default Passcode Pengawas: GURU2026
+        let SECURITY_STATE = /*__SECURITY_STATE_START__*/{"studentPassHash":"b2426e7f","proctorPassHash":"5670e4b2","examDurationMinutes":60,"googleAppsScriptUrl":"https://script.google.com/macros/s/AKfycbzrlmSYAF3RwNsdk1Y3ewM6bAQtwv1GmW5Lr0-yaYxuwLrji-mL81az1FQTEqRaK2su/exec"}/*__SECURITY_STATE_END__*/;
+
+        /* ============================================================================
+         * 2. FOKUS 1 MATA PELAJARAN SMP & BANK SOAL TUNGGAL (KOSONG SAAT AWAL)
+         * ============================================================================ */
+        let ACTIVE_SUBJECT_NAME = /*__ACTIVE_SUBJECT_START__*/"BAHASA INGGRIS 7"/*__ACTIVE_SUBJECT_END__*/;
+
+        let SINGLE_QUESTION_BANK = /*__QUESTION_BANK_START__*/[{"q":"Read the dialog below! Rani: \"Hi, Bagas. What is your job at home after dinner?\" Bagas: \"My parents ask me to clean the dirty plates and glasses in the kitchen sink.\" Rani: \"Oh, I do that too at my house!\" What household chore does Bagas do after dinner?","options":{"A":"He sweeps the floor.","B":"He washes the dishes.","C":"He takes out the trash.","D":"He makes the bed."},"answer":"B"},{"q":"Read the short text below! Welcome to my study corner! It is small, but very neat. On my wooden desk, ...(1)... a black laptop and a reading lamp. Beside the laptop, ...(2)... three English dictionaries and four colorful markers inside a plastic holder. What are the best phrases to fill in the blanks (1) and (2)?","options":{"A":"(1) there are / (2) there is","B":"(1) there is / (2) there is","C":"(1) there are / (2) there are","D":"(1) there is / (2) there are"},"answer":"D"},{"q":"Read the dialog below! Dimas: \"Mom, I cannot find my futsal shoes. Where are they?\" Mother: \"Did you check the living room? I saw them right beneath the long sofa this morning.\" Dimas: \"Ah, found them! Thank you, Mom.\" Based on the dialog, where are Dimas’s futsal shoes?","options":{"A":"Under the sofa","B":"On the sofa","C":"Behind the sofa","D":"Above the sofa"},"answer":"A"},{"q":"Read the text below! Sinta is a disciplined seventh-grade student. Every morning from Monday to Sunday, she wakes up at 5 a.m. and tidies up her bedroom before taking a shower. She does not miss a single day doing this activity. Complete the sentence based on the text: Sinta ... makes her bed in the morning.","options":{"A":"never","B":"rarely","C":"always","D":"sometimes"},"answer":"C"},{"q":"Read the kitchen sign below! KITCHEN RULES FOR EVERYONE: (1) Wipe the stove after cooking. (2) Put dirty bowls in the sink. (3) ... the refrigerator door open! The food inside will spoil. What is the correct imperative word to complete rule number (3)?","options":{"A":"Leave","B":"Don't leave","C":"Open","D":"Don't close"},"answer":"B"},{"q":"Read the riddle below! \"I am a room in your lovely home. You can find a stove, a frying pan, a refrigerator, and a sink inside me. Your mother or father usually cooks delicious meals for breakfast and dinner here.\" What room is described in the riddle?","options":{"A":"The bathroom","B":"The living room","C":"The garage","D":"The kitchen"},"answer":"D"},{"q":"Read the recipe snippet below! How to Make Sweet Iced Tea: (1) Put one teabag and two spoons of sugar into a glass. (2) Pour hot water into the glass. (3) ... the water gently with a spoon until the sugar dissolves completely. (4) Add some ice cubes and serve it cold. Which action verb best completes step (3)?","options":{"A":"Stir","B":"Peel","C":"Chop","D":"Fry"},"answer":"A"},{"q":"Read the text below! My older brother, Riko, loves keeping our front yard clean. Every afternoon at 4 p.m., he takes the plastic hose and gives water to all the mango trees and rose plants in the garden. What is the correct sentence in Simple Present Tense to state Riko's routine?","options":{"A":"Riko water the plants every afternoon.","B":"Riko is water the plants every afternoon.","C":"Riko waters the plants every afternoon.","D":"Riko watering the plants every afternoon."},"answer":"C"},{"q":"Read the dialog below! Alya: \"Tiara, I really like this creamy strawberry yogurt. Why wasn't it melted when I arrived at your house?\" Tiara: \"Because I put it inside a tall, cold electronic box in the kitchen for 2 hours before you came.\" Which object is Tiara talking about?","options":{"A":"The oven","B":"The blender","C":"The rice cooker","D":"The refrigerator"},"answer":"D"},{"q":"Read the dialog below! Mother: \"Nadia, look at the living room floor! It is full of muddy footprints after your cat ran inside.\" Nadia: \"Oh no, I am sorry, Mom. What should I do right now?\" Mother: \"Please take the wet mop in the bathroom and ... the floor immediately.\" What is the best verb to complete the mother's instruction?","options":{"A":"mop","B":"sweep","C":"dust","D":"iron"},"answer":"A"},{"q":"Read the chat conversation below! Fajar: \"Hey Citra, are you free to study together at 4 p.m. today?\" Citra: \"Sorry, Fajar. My mom works late today. I have to iron the school uniforms and feed my cat at 4 p.m. My brother, Dika, only takes out the rubbish.\" Fajar: \"Okay, how about 5 p.m.?\" Citra: \"Sure! I will be done by then.\" Which statement is TRUE according to the chat?","options":{"A":"Dika helps Citra iron the school uniforms.","B":"Citra has two household chores to do at 4 p.m.","C":"Fajar asks Citra to feed her cat at 5 p.m.","D":"Citra's mother irons the school uniforms every afternoon."},"answer":"B"},{"q":"Read the dialog below! Father: \"Bima, the dry leaves in our garden are everywhere. Can you help me?\" Bima: \"Sure, Dad. ...(1)... ?\" Father: \"You can rake the dry leaves and put them into that big black plastic bag.\" Bima: \"Okay, Dad. I'll do it right away.\" What is the most appropriate expression for Bima to ask for information in blank (1)?","options":{"A":"Where is the garden?","B":"Do you like gardening?","C":"What do you want me to do?","D":"When do you sweep the floor?"},"answer":"C"},{"q":"Read the disordered steps of making \"Crispy Fried Banana\" below! (1) Dip the peeled bananas into the sweet flour batter until fully coated. (2) First, peel (5) ripe bananas and cut them in half lengthwise. (3) Serve the crispy fried bananas on a plate while they are warm with grated cheese on top. (4) Mix wheat flour, a pinch of salt, sugar, and water in a bowl to make the batter. (5) Fry the coated bananas in hot oil until they turn golden brown, then drain the oil. What is the correct order to make Crispy Fried Banana?","options":{"A":"(2) - (4) - (1) - (5) - (3)","B":"(2) - (1) - (4) - (5) - (3)","C":"(4) - (2) - (5) - (1) - (3)","D":"(4) - (1) - (2) - (5) - (3)"},"answer":"A"},{"q":"Read the procedure text below! How to Make Spicy Mango Rujak Ingredients: 1 half-ripe mango, 3 chili peppers, 100 grams of palm sugar, a pinch of salt, and 1 spoon of tamarind water. Steps: (1) Peel the mango, wash it cleanly, and slice it into bite-sized pieces. (2) Put chili peppers, salt, and palm sugar on a stone mortar. (3) Grind them using a pestle until smooth, then add tamarind water to make the spicy sauce. (4) Pour the spicy sauce over the mango slices or dip the mango into the sauce. What kitchen tools do you definitely need to do step (1) and step (3)?","options":{"A":"A spoon, a fork, and a frying pan","B":"A blender, a grater, and a saucepan","C":"A peeler, a bowl, and a toaster","D":"A knife, a stone mortar, and a pestle"},"answer":"D"},{"q":"Read the description of Kevin's dining room below! In the center of my dining room, there is a big round table. Around the table, there are four wooden chairs. Right above the table, there is a bright hanging lamp. My mother puts a vase of fresh sunflowers in the middle of the table, between the tissue box and the fruit basket. Where is the vase of fresh sunflowers located?","options":{"A":"Under the big round table.","B":"On the table, between the tissue box and the fruit basket.","C":"Hanging above the four wooden chairs.","D":"Beside the dining room door, near the hanging lamp."},"answer":"B"},{"q":"Read the text about a messy pantry below! After making pancakes with her friends, Clara looks at her kitchen table: - Two empty milk cartons are on the table. - One dirty whisk is inside the glass bowl. - Five eggs are left in the egg tray. - A bottle of honey is behind the flour bag. Which sentence is INCORRECT based on the situation above?","options":{"A":"There are two empty milk cartons on the table.","B":"There is a dirty whisk inside the glass bowl.","C":"There is a bottle of honey in front of the flour bag.","D":"There are five eggs in the egg tray."},"answer":"C"},{"q":"Read Arjuna's weekly chore schedule below! - Sweeping the bedroom: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday. - Washing the dishes: Monday, Wednesday, Friday, Saturday. - Watering the garden: Tuesday, Sunday. - Cooking dinner: (0) days (His mother and father always cook dinner). Based on the schedule, which statement uses the adverb of frequency correctly?","options":{"A":"Arjuna often washes the dishes four times a week.","B":"Arjuna always cooks dinner for his family.","C":"Arjuna never sweeps his bedroom on weekends.","D":"Arjuna usually waters the garden every single day."},"answer":"A"},{"q":"Read the text below! My sister, Zara, and I have different morning routines on Sundays. I ...(1)... wake up early at (5) a.m. to go jogging with my father. On the other hand, Zara prefers staying in bed until (7) a.m. However, after breakfast, she ...(2)... our mother bake chocolate cookies in the kitchen because baking is her favorite hobby. What are the correct words to fill in blanks (1) and (2)?","options":{"A":"(1) usually / (2) help","B":"(1) never / (2) don't help","C":"(1) always / (2) helping","D":"(1) usually / (2) helps"},"answer":"D"},{"q":"Read the dialog in the kitchen below! Rendra: \"Chef, the garlic and onions are already in the hot pan. They smell so good! Should I leave the stove on high heat?\" Chef Andi: \"No! Lower the heat to medium right now, or the garlic will burn and taste bitter.\" What is the purpose of Chef Andi's imperative sentence in bold?","options":{"A":"To invite Rendra to eat the food together.","B":"To give an urgent instruction so the food doesn't get ruined.","C":"To ask for information about the garlic's taste.","D":"To describe the shape of the stove in the kitchen."},"answer":"B"},{"q":"Read the note left by Mother on the refrigerator door! Dear Gilang, I put a plate of chocolate pudding for you inside the fridge. Enjoy it after you finish your math homework! By the way, it looks like it is going to rain heavily this afternoon. Please take the dry clothes from the clothesline in the backyard and put them in the laundry basket. Love, Mom. Which imperative sentence matches the mother's request in the note?","options":{"A":"\"Bring the dry clothes inside before it rains!\"","B":"\"Put the chocolate pudding into the laundry basket!\"","C":"\"Wash the dirty clothes in the backyard before it rains!\"","D":"\"Do your math homework in the backyard!\""},"answer":"A"},{"q":"Read the descriptive text below! My favorite room in my house is on the second floor. It has a big window facing the green hill. Inside, I have a comfortable single bed with a blue blanket, a wooden wardrobe for my clothes, and a white bookshelf next to the door. I love sitting on the fluffy carpet while reading comics and eating potato chips in the afternoon. What is the main topic of the text above?","options":{"A":"The writer's favorite snack to cook in the kitchen.","B":"The instructions on how to clean the second floor.","C":"The daily routine of the writer's family in the living room.","D":"The description of the writer's comfortable bedroom."},"answer":"D"},{"q":"Read the dialog below! Nino: \"Wow, your living room feels so cool and fresh even without an air conditioner! How is that possible?\" Salsa: \"Look at the two large glass windows on the left and right walls. My father always opens them in the morning so the fresh wind can blow through the room. We also put three green indoor plants in the corners.\" Why does Salsa’s living room feel cool and fresh?","options":{"A":"Because there is a big air conditioner above the sofa.","B":"Because it has two large windows for air circulation and indoor plants.","C":"Because Salsa mops the floor with ice water every 2 hours.","D":"Because the living room has no furniture at all inside it."},"answer":"B"},{"q":"Read the text about Tio's afternoon routine! Every weekday, Tio arrives home from school at 2 p.m. First, he changes his school uniform and eats lunch in the dining room. Noticeably, he never leaves his dirty plate on the table; he always washes it right away. At 3 p.m., he takes a short nap for 1 hour. After waking up at 4 p.m., he sweeps the front porch and feeds his five goldfish before taking an evening shower. What does Tio do right after he wakes up from his nap?","options":{"A":"He eats lunch and washes his dirty plate.","B":"He changes his school uniform and takes a shower.","C":"He sweeps the front porch and feeds his goldfish.","D":"He goes to school and arrives home at 2 p.m."},"answer":"C"},{"q":"Read the text below! Every Sunday morning, the Wijaya family works together to clean their house and prepare a special breakfast. Mr. Wijaya mows the grass in the front yard. Mrs. Wijaya makes fluffy banana pancakes in the kitchen. Their daughter, Laila, cleans the windows in the living room, while their youngest son, Edo, arranges the shoes on the shoe rack and prepares the plates on the dining table. Who are busy working inside the house on Sunday morning?","options":{"A":"Mrs. Wijaya, Laila, and Edo","B":"Mr. Wijaya and Edo","C":"Only Mrs. Wijaya and Laila","D":"Mr. Wijaya, Mrs. Wijaya, and Laila"},"answer":"A"},{"q":"Read the recipe and the story below! Recipe: Creamy Avocado Smoothie (1) Cut 1 ripe avocado in half, remove the big seed, and scoop the green flesh into a blender. (2) Add 200 ml of cold fresh milk and 2 tablespoons of condensed milk. (3) Add 5 ice cubes into the blender. (4) Close the blender lid tightly, then press the \"ON\" button and blend for 1 minute until smooth. (5) Pour into a tall glass and top with chocolate sprinkles. Story: Daffa wants to surprise his sister by making this smoothie. He puts the avocado flesh, cold milk, condensed milk, and ice cubes into the blender. Because he is in a hurry, he forgets to read the bold instruction in step 4 and immediately presses the \"ON\" button. What will most likely happen in Daffa's kitchen?","options":{"A":"The avocado seed will break the blender blades.","B":"The smoothie will taste very salty and bitter.","C":"The milk and avocado mixture will splash out all over the kitchen counter.","D":"The blender will not turn on because there is no electricity."},"answer":"C"},{"q":"Read the text carefully! Mia wants to rearrange her small bedroom so she can study comfortably with natural sunlight. - Her bedroom has only 1 window on the North wall. - The bedroom door is on the South wall. - Right now, her tall wooden wardrobe is placed right in front of the window on the North wall, blocking all the sunlight. - Her study desk is in the dark corner near the South wall, and her bed is along the East wall. - The West wall is completely empty. If Mia wants her study desk to get bright natural sunlight from the window without blocking the bedroom door, what is the best arrangement she should do?","options":{"A":"Move the bed in front of the door on the South wall, and put the wardrobe on the East wall.","B":"Move the tall wardrobe to the West wall, and put the study desk in front of the window on the North wall.","C":"Keep the tall wardrobe in front of the window, and put the study desk inside the wardrobe.","D":"Put both the tall wardrobe and the bed in front of the window on the North wall."},"answer":"B"},{"q":"Read the family situation below! The Pratama family has a rule: the kitchen trash bin must be emptied every evening at 7 p.m. because it smells bad if left overnight. Here is the family members' evening schedule on Wednesdays: - Father: Works at the office until 8 p.m. on Wednesdays. - Mother: Teaches an online English class from 6 p.m. to 8 p.m. in her study room. - Raka (13 years old): Attends basketball practice from 4 p.m. to 5 p.m., then relaxes and watches TV at home from 6 p.m. to 8 p.m. - Nisa (7 years old): Goes to sleep early at 7 p.m., and the trash bag is too heavy for her to carry. Based on the situation above, who is the most responsible person to take out the trash at 7 p.m. on Wednesdays, and why?","options":{"A":"Father, because he is the strongest person in the house.","B":"Mother, because she usually cooks in the kitchen every day.","C":"Nisa, because she has no homework to do at 7 p.m.","D":"Raka, because he is already at home doing a leisure activity at 7 p.m. and is old enough to carry the heavy bag."},"answer":"D"},{"q":"Read the recipe and dialog below! Standard Recipe for 1 Bowl of Egg Fried Rice: - 1 plate of cold cooked rice - 1 egg - 2 cloves of garlic (chopped) - 1 tablespoon of sweet soy sauce - 1/2 teaspoon of salt - Note: Add 3 sliced red chilies if you like spicy food. Dialog: Bayu: \"Reno, I want to cook Egg Fried Rice for both of us and my little brother, Leo. Leo is only 5 years old and he cries if he eats spicy food. Can you tell me what to prepare?\" If Reno gives the right instruction to Bayu to cook for all 3 people in one big wok so everyone can eat it together, which instruction is CORRECT?","options":{"A":"\"Prepare 3 plates of rice, beat 3 eggs, chop 6 cloves of garlic, and don't add any sliced red chilies!\"","B":"\"Prepare 1 plate of rice, beat 1 egg, chop 2 cloves of garlic, and add 9 sliced red chilies!\"","C":"\"Prepare 3 plates of rice, beat 1 egg, don't use any garlic, and add 3 tablespoons of salt!\"","D":"\"Prepare 2 plates of rice, beat 2 eggs, chop 4 cloves of garlic, and put a lot of red chilies inside!\""},"answer":"A"},{"q":"Read the short story below! After making Es Campur (Indonesian mixed ice dessert) in the kitchen, Siska and her friends go to the dining room to enjoy their sweet drink. Ten minutes later, Siska’s mother walks into the kitchen and says loudly: \"Siska! Look at the kitchen counter! The condensed milk can is still open, there is spilled red syrup on the table, and a line of black ants is already marching toward the sugar jar!\" To solve the problem in the kitchen immediately, which set of imperative instructions should Siska tell her friends?","options":{"A":"\"Let's go to the living room, turn on the television, and drink our Es Campur!\"","B":"\"Sweep the bedroom floor, make the bed, and fold the blankets neatly!\"","C":"\"Close the milk can, tighten the sugar jar lid, and wipe the spilled syrup with a wet cloth!\"","D":"\"Peel the mangoes, cut the jelly into small cubes, and add more ice into the bowl!\""},"answer":"C"},{"q":"Read the comparison of two brothers below! Aldo and Beno share a big bedroom, but they have very different habits. Whenever Aldo finishes reading a book or playing guitar, he immediately puts them back on the shelf and the corner stand. He makes his bed every morning at 6 a.m. and sweeps his side of the room every two days. On the contrary, Beno rarely puts his dirty socks into the laundry basket; they are often under his bed or on his study chair. When Beno eats crispy snacks while studying, he frequently leaves the empty plastic wrappers on his desk for days. From the text above, what can we conclude about their bedroom?","options":{"A":"Both sides of the bedroom are always spotless and smell very fresh every day.","B":"Aldo's side of the room is neat and organized, while Beno's side is messy and dirty.","C":"Beno is more diligent in doing household chores than his brother, Aldo.","D":"Aldo never cleans his bedroom because Beno always sweeps the whole room every morning."},"answer":"B"}]/*__QUESTION_BANK_END__*/;
+
+        /* ============================================================================
+         * 3. STATE UJIAN & KAMERA
+         * ============================================================================ */
+        let mediaStream = null;
+        let isCameraReady = false;
+        let examTimerInterval = null;
+        let cameraMonitorInterval = null;
+        let snapshotSenderInterval = null;
+        let proctorCctvPollInterval = null;
+        let darkFrameCounter = 0;
+        let lastTouchOrScrollTime = 0;
+        let lastViolationTime = 0;
+
+        let activeExam = {
+            isRunning: false,
+            studentName: "",
+            nisn: "",
+            className: "",
+            subject: "",
+            questions: [],
+            currentIndex: 0,
+            answers: {},
+            doubts: {},
+            remainingSeconds: 3600,
+            violations: 0
+        };
+
+        const SCORE_LOGS = [];
+        let LIVE_CAMERA_FEEDS = {};
+        let FOCUSED_STUDENT_NISN = "ALL";
+
+        /* ============================================================================
+         * 4. INISIALISASI HALAMAN & INFO MATA PELAJARAN TUNGGAL
+         * ============================================================================ */
+        window.onload = function () {
+            // Pastikan setiap kali file HTML dibuka pertama kali, selalu tampil Beranda Awal Siswa
+            switchView('student-login');
+            closeCustomModal();
+
+            syncSingleSubjectUI();
+            renderAdminQuestionList();
+            renderScoreLogs();
+            renderLiveCctvGrid();
+            setupAntiCheatListeners();
+            if (SECURITY_STATE.googleAppsScriptUrl) {
+                const gasInput = document.getElementById('gas-url-input');
+                if (gasInput) gasInput.value = SECURITY_STATE.googleAppsScriptUrl;
+            }
+            const durInput = document.getElementById('exam-duration-input');
+            if (durInput) durInput.value = SECURITY_STATE.examDurationMinutes;
+        };
+
+        /* ============================================================================
+         * FITUR PENGIRIMAN SNAPSHOT KAMERA LIVE SISWA KE DASHBOARD PENGAWAS
+         * ============================================================================ */
+        function startLiveCameraSnapshotSender() {
+            if (snapshotSenderInterval) clearInterval(snapshotSenderInterval);
+
+            // Kirim tangkapan awal segera setelah mulai ujian
+            setTimeout(() => captureAndSendStudentSnapshot("SEDANG UJIAN"), 1200);
+
+            // Kirim berkala setiap 5 detik agar pantauan pengawas lebih responsif
+            snapshotSenderInterval = setInterval(() => {
+                if (!activeExam.isRunning) {
+                    clearInterval(snapshotSenderInterval);
+                    return;
+                }
+                captureAndSendStudentSnapshot("SEDANG UJIAN");
+            }, 5000);
+        }
+
+        async function captureAndSendStudentSnapshot(statusLabel = "SEDANG UJIAN") {
+            const video = document.getElementById('exam-live-video');
+            if (!video || video.readyState < 2) return;
+
+            // Kompres gambar ukuran 320x180 JPEG agar wajah siswa terlihat jelas saat diawasi satu per satu
+            const snapCanvas = document.createElement('canvas');
+            snapCanvas.width = 320;
+            snapCanvas.height = 180;
+            const ctx = snapCanvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, snapCanvas.width, snapCanvas.height);
+            const dataUrl = snapCanvas.toDataURL('image/jpeg', 0.62);
+
+            const answeredCount = Object.keys(activeExam.answers).length;
+            const totalCount = activeExam.questions.length;
+
+            const feedPayload = {
+                action: "camera_snapshot",
+                nisn: activeExam.nisn,
+                name: activeExam.studentName,
+                className: activeExam.className,
+                subject: activeExam.subject,
+                progress: `${statusLabel} (${answeredCount}/${totalCount} Soal)`,
+                violations: activeExam.violations,
+                timestamp: new Date().toLocaleTimeString('id-ID'),
+                snapshot: dataUrl
+            };
+
+            // Simpan ke memori lokal (berguna jika diuji coba pada 1 perangkat yang sama)
+            LIVE_CAMERA_FEEDS[activeExam.nisn] = feedPayload;
+
+            // Kirim ke Google Apps Script jika URL sudah diatur oleh Guru
+            if (SECURITY_STATE.googleAppsScriptUrl) {
+                try {
+                    await fetch(SECURITY_STATE.googleAppsScriptUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                        body: JSON.stringify(feedPayload)
+                    });
+                } catch (_) {}
+            }
+        }
+
+        async function fetchLiveCameraFeedsFromCloud() {
+            const syncLabel = document.getElementById('cctv-last-sync');
+            if (syncLabel) syncLabel.textContent = "Menyinkronkan kamera...";
+
+            if (SECURITY_STATE.googleAppsScriptUrl) {
+                try {
+                    const res = await fetch(SECURITY_STATE.googleAppsScriptUrl + "?action=get_cameras&t=" + Date.now());
+                    const data = await res.json();
+                    if (data && Array.isArray(data.feeds)) {
+                        data.feeds.forEach(item => {
+                            if (item.nisn) LIVE_CAMERA_FEEDS[item.nisn] = item;
+                        });
+                    }
+                    if (syncLabel) syncLabel.textContent = "Update Terakhir: " + new Date().toLocaleTimeString('id-ID');
+                } catch (err) {
+                    if (syncLabel) syncLabel.textContent = "Mode Lokal Aktif (" + new Date().toLocaleTimeString('id-ID') + ")";
+                }
+            } else {
+                if (syncLabel) syncLabel.textContent = "Mode Lokal (URL Cloud belum diisi)";
+            }
+
+            renderLiveCctvGrid();
+        }
+
+        function handleSelectFocusStudent(nisnVal) {
+            FOCUSED_STUDENT_NISN = nisnVal || "ALL";
+            renderLiveCctvGrid();
+        }
+
+        function navigateSpotlightStudent(direction) {
+            const feedKeys = Object.keys(LIVE_CAMERA_FEEDS);
+            if (feedKeys.length === 0) return;
+
+            if (FOCUSED_STUDENT_NISN === "ALL") {
+                FOCUSED_STUDENT_NISN = feedKeys[0];
+            } else {
+                const currentIdx = feedKeys.indexOf(String(FOCUSED_STUDENT_NISN));
+                let nextIdx = currentIdx + direction;
+                if (nextIdx < 0) nextIdx = feedKeys.length - 1;
+                if (nextIdx >= feedKeys.length) nextIdx = 0;
+                FOCUSED_STUDENT_NISN = feedKeys[nextIdx];
+            }
+
+            const selectEl = document.getElementById('cctv-select-student');
+            if (selectEl) selectEl.value = FOCUSED_STUDENT_NISN;
+            renderLiveCctvGrid();
+        }
+
+        function renderLiveCctvGrid() {
+            const grid = document.getElementById('live-cctv-grid');
+            const countBadge = document.getElementById('cctv-active-count');
+            const selectEl = document.getElementById('cctv-select-student');
+            const spotlightPanel = document.getElementById('cctv-spotlight-panel');
+            const searchInput = document.getElementById('cctv-search-input');
+            if (!grid) return;
+
+            const allFeeds = Object.values(LIVE_CAMERA_FEEDS);
+            if (countBadge) countBadge.textContent = `${allFeeds.length} Siswa Terpantau`;
+
+            // Update opsi dropdown siswa satu per satu
+            if (selectEl) {
+                const currentVal = FOCUSED_STUDENT_NISN;
+                selectEl.innerHTML = `<option value="ALL">-- Tampilkan Semua Siswa (${allFeeds.length} Siswa) --</option>`;
+                allFeeds.forEach((f, idx) => {
+                    const opt = document.createElement('option');
+                    opt.value = String(f.nisn);
+                    opt.textContent = `${idx + 1}. ${f.name} (Kelas ${f.className}) - Pelanggaran: ${f.violations || 0}/3`;
+                    if (String(f.nisn) === String(currentVal)) opt.selected = true;
+                    selectEl.appendChild(opt);
+                });
+            }
+
+            // Render Panel Spotlight (Jika Pengawas sedang mengawasi 1 siswa spesifik)
+            if (spotlightPanel) {
+                const focusedFeed = LIVE_CAMERA_FEEDS[FOCUSED_STUDENT_NISN];
+                if (FOCUSED_STUDENT_NISN !== "ALL" && focusedFeed) {
+                    const hasViolation = Number(focusedFeed.violations) > 0;
+                    spotlightPanel.classList.remove('hidden');
+                    spotlightPanel.innerHTML = `
+                        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-700 pb-3 mb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="w-3 h-3 rounded-full bg-red-500 pulse-dot"></span>
+                                <span class="text-xs font-extrabold uppercase tracking-wider text-dhammasoka-400">MODE FOKUS PENGAWASAN INDIVIDU (1 SISWA)</span>
+                            </div>
+                            <button type="button" onclick="handleSelectFocusStudent('ALL')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1 rounded-xl text-xs font-semibold transition flex items-center gap-1">
+                                <i class="ph-bold ph-squares-four"></i> Kembali ke Tampilan Semua Siswa
+                            </button>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+                            <div class="lg:col-span-7 relative aspect-video bg-black rounded-2xl overflow-hidden border-2 ${hasViolation ? 'border-rose-500' : 'border-slate-700'} shadow-2xl">
+                                <img src="${focusedFeed.snapshot}" alt="${focusedFeed.name}" class="w-full h-full object-cover transform scale-x-[-1]" />
+                                <div class="absolute top-3 left-3 bg-black/75 backdrop-blur-sm px-3 py-1 rounded-lg text-xs font-mono text-emerald-400 flex items-center gap-1.5">
+                                    <span class="w-2 h-2 rounded-full bg-red-500 pulse-dot"></span> LIVE CAMERA • Update: ${focusedFeed.timestamp || '-'}
+                                </div>
+                            </div>
+                            <div class="lg:col-span-5 space-y-4">
+                                <div>
+                                    <span class="text-xs font-bold bg-dhammasoka-500 text-navy-900 px-2.5 py-1 rounded-lg">${focusedFeed.subject || 'Ujian SMP'}</span>
+                                    <h4 class="text-2xl font-extrabold text-white mt-2">${focusedFeed.name}</h4>
+                                    <p class="text-sm text-slate-300">NISN: <b>${focusedFeed.nisn}</b> • Kelas: <b>${focusedFeed.className}</b></p>
+                                </div>
+                                <div class="bg-slate-800/90 rounded-2xl p-4 border border-slate-700 space-y-2.5 text-xs">
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Status & Progres Soal:</span>
+                                        <span class="font-bold text-dhammasoka-400">${focusedFeed.progress || '-'}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Catatan Pelanggaran:</span>
+                                        <span class="font-extrabold ${hasViolation ? 'text-rose-400' : 'text-emerald-400'}">${focusedFeed.violations || 0} dari 3 Batas Pelanggaran</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span class="text-slate-400">Sinkronisasi Terakhir:</span>
+                                        <span class="font-mono text-slate-200">${focusedFeed.timestamp || '-'}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2 pt-1">
+                                    <button type="button" onclick="navigateSpotlightStudent(-1)" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-white font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border border-slate-600">
+                                        <i class="ph-bold ph-arrow-left"></i> Siswa Sebelumnya
+                                    </button>
+                                    <button type="button" onclick="navigateSpotlightStudent(1)" class="w-1/2 bg-dhammasoka-500 hover:bg-dhammasoka-400 text-navy-900 font-bold py-2.5 px-4 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                                        Siswa Berikutnya <i class="ph-bold ph-arrow-right"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    spotlightPanel.classList.add('hidden');
+                    spotlightPanel.innerHTML = '';
+                }
+            }
+
+            const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+            const feedList = allFeeds.filter(item => {
+                if (!query) return true;
+                return String(item.name).toLowerCase().includes(query) ||
+                       String(item.nisn).toLowerCase().includes(query) ||
+                       String(item.className).toLowerCase().includes(query);
+            });
+
+            if (feedList.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full py-14 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-300 text-slate-400">
+                        <i class="ph-duotone ph-video-camera-slash text-5xl mb-2 text-slate-400"></i>
+                        <p class="text-sm font-bold text-slate-600">Belum Ada Kamera Siswa yang Sesuai / Aktif</p>
+                        <p class="text-xs mt-1 max-w-md mx-auto">Begitu siswa memulai ujian di HP atau Laptop mereka, tangkapan wajah live kamera setiap siswa akan otomatis muncul di layar CCTV ini.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = '';
+            feedList.forEach(feed => {
+                const hasViolation = Number(feed.violations) > 0;
+                const isFocused = String(FOCUSED_STUDENT_NISN) === String(feed.nisn);
+                const card = document.createElement('div');
+                card.onclick = () => handleSelectFocusStudent(String(feed.nisn));
+                card.className = `cursor-pointer rounded-2xl overflow-hidden border-2 shadow-md bg-navy-900 text-white flex flex-col justify-between transition transform hover:-translate-y-0.5 ${
+                    isFocused ? 'border-dhammasoka-500 ring-4 ring-dhammasoka-500/40' : (hasViolation ? 'border-rose-500 ring-2 ring-rose-500/30' : 'border-slate-700 hover:border-slate-500')
+                }`;
+
+                card.innerHTML = `
+                    <div class="relative aspect-video bg-black overflow-hidden">
+                        <img src="${feed.snapshot}" alt="${feed.name}" class="w-full h-full object-cover transform scale-x-[-1]" />
+                        <div class="absolute top-2 left-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded-md text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-red-500 pulse-dot"></span> LIVE • ${feed.timestamp || '-'}
+                        </div>
+                        <div class="absolute top-2 right-2 ${hasViolation ? 'bg-rose-600 text-white' : 'bg-slate-900/80 text-slate-200'} px-2 py-0.5 rounded-md text-[10px] font-extrabold">
+                            Pelanggaran: ${feed.violations || 0}/3
+                        </div>
+                        <div class="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-semibold text-dhammasoka-400 flex items-center justify-between">
+                            <span class="truncate">${feed.progress || 'Sedang Mengerjakan'}</span>
+                            <span class="text-[9px] bg-dhammasoka-500 text-navy-900 font-bold px-1.5 py-0.5 rounded ml-1 shrink-0">Klik Fokus</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-slate-900 flex items-center justify-between gap-2">
+                        <div class="truncate">
+                            <h4 class="font-bold text-xs text-white truncate">${feed.name}</h4>
+                            <p class="text-[10px] text-slate-400 truncate">NISN: ${feed.nisn} • Kelas ${feed.className}</p>
+                        </div>
+                        <span class="shrink-0 text-[10px] font-bold bg-slate-800 text-slate-300 px-2 py-1 rounded-lg border border-slate-700">
+                            ${feed.subject}
+                        </span>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        /* ============================================================================
+         * FITUR EKSPOR PAKET APLIKASI UJIAN SIAP SEBAR KE SISWA (.HTML)
+         * ============================================================================ */
+        function exportReadyExamFile() {
+            if (!ACTIVE_SUBJECT_NAME) {
+                showCustomModal(
+                    "Mata Pelajaran Belum Diisi",
+                    "Silakan ketik dan simpan Nama Mata Pelajaran terlebih dahulu sebelum mengunduh paket ujian untuk siswa.",
+                    "warning"
+                );
+                return;
+            }
+            if (SINGLE_QUESTION_BANK.length === 0) {
+                showCustomModal(
+                    "Bank Soal Masih Kosong",
+                    "Silakan unggah naskah soal Word (.docx) atau tambahkan soal manual terlebih dahulu agar siswa memiliki soal untuk dikerjakan.",
+                    "warning"
+                );
+                return;
+            }
+
+            // Buat kloning dokumen agar kita bisa membersihkan elemen dinamis (Tailwind/Phosphor runtime)
+            // tanpa mengganggu tampilan Dashboard Pengawas yang sedang terbuka
+            const clonedDoc = document.documentElement.cloneNode(true);
+
+            // 1. Bersihkan style/link injeksi otomatis dari CDN agar tidak duplikat saat file dibuka kembali
+            const headStyles = clonedDoc.querySelectorAll('head style, head link[rel="stylesheet"]');
+            headStyles.forEach(el => {
+                // Pertahankan hanya Google Fonts & Custom Style bawaan kita
+                if (el.tagName.toLowerCase() === 'link' && el.href && el.href.includes('fonts.googleapis.com')) {
+                    return;
+                }
+                if (el.tagName.toLowerCase() === 'style' && el.textContent.includes('pulse-ring')) {
+                    return;
+                }
+                el.remove();
+            });
+
+            // 2. Pastikan tampilan awal pada file kloning terkunci di Beranda Awal Siswa (view-student-login)
+            const views = ['view-student-login', 'view-student-exam', 'view-student-result', 'view-proctor-login', 'view-proctor-dashboard'];
+            views.forEach(v => {
+                const sec = clonedDoc.querySelector('#' + v);
+                if (sec) {
+                    if (v === 'view-student-login') sec.classList.remove('hidden');
+                    else sec.classList.add('hidden');
+                }
+            });
+
+            const btnProctor = clonedDoc.querySelector('#btn-header-proctor');
+            const btnHome = clonedDoc.querySelector('#btn-header-home');
+            if (btnProctor) btnProctor.classList.remove('hidden');
+            if (btnHome) {
+                btnHome.classList.add('hidden');
+                btnHome.classList.remove('flex');
+            }
+
+            const modalEl = clonedDoc.querySelector('#custom-modal');
+            if (modalEl) {
+                modalEl.classList.add('hidden');
+                modalEl.classList.remove('flex');
+            }
+
+            // 3. Reset container dinamis agar bersih saat diinisialisasi ulang oleh browser siswa
+            const clearIds = ['admin-question-list', 'live-cctv-grid', 'question-options', 'question-nav-grid', 'score-log-tbody'];
+            clearIds.forEach(id => {
+                const el = clonedDoc.querySelector('#' + id);
+                if (el) el.innerHTML = '';
+            });
+
+            // 4. Ambil HTML bersih dan suntikkan data Bank Soal, Mata Pelajaran, & Passcode secara aman
+            let fullHtml = "<!DOCTYPE html>\n" + clonedDoc.outerHTML;
+
+            const safeSecurityJson = JSON.stringify(SECURITY_STATE).replace(/<\/script>/gi, '<\\/script>');
+            const safeSubjectJson = JSON.stringify(ACTIVE_SUBJECT_NAME).replace(/<\/script>/gi, '<\\/script>');
+            const safeBankJson = JSON.stringify(SINGLE_QUESTION_BANK).replace(/<\/script>/gi, '<\\/script>');
+
+            fullHtml = fullHtml.replace(
+                /\/\*__SECURITY_STATE_START__\*\/[\s\S]*?\/\*__SECURITY_STATE_END__\*\//,
+                `/*__SECURITY_STATE_START__*/${safeSecurityJson}/*__SECURITY_STATE_END__*/`
+            );
+
+            fullHtml = fullHtml.replace(
+                /\/\*__ACTIVE_SUBJECT_START__\*\/[\s\S]*?\/\*__ACTIVE_SUBJECT_END__\*\//,
+                `/*__ACTIVE_SUBJECT_START__*/${safeSubjectJson}/*__ACTIVE_SUBJECT_END__*/`
+            );
+
+            fullHtml = fullHtml.replace(
+                /\/\*__QUESTION_BANK_START__\*\/[\s\S]*?\/\*__QUESTION_BANK_END__\*\//,
+                `/*__QUESTION_BANK_START__*/${safeBankJson}/*__QUESTION_BANK_END__*/`
+            );
+
+            const cleanSubject = ACTIVE_SUBJECT_NAME.replace(/[^a-zA-Z0-9]/g, "_") || "Mapel";
+            const fileName = `index.html`;
+
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Ujian_SMP_${cleanSubject}_Dhammasoka.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showCustomModal(
+                "Paket Ujian Bersih & Siap Digunakan!",
+                `File "Ujian_SMP_${cleanSubject}_Dhammasoka.html" berhasil diunduh dengan struktur kode yang telah dioptimalkan. File ini siap dibuka langsung di Laptop/HP atau di-upload ke layanan hosting!`,
+                "success"
+            );
+        }
+
+        function syncSingleSubjectUI() {
+            const stdDisplay = document.getElementById('std-active-subject-display');
+            const stdBadge = document.getElementById('std-active-qcount-badge');
+            const adminInput = document.getElementById('admin-single-subject-input');
+
+            if (stdDisplay) {
+                if (ACTIVE_SUBJECT_NAME) {
+                    stdDisplay.textContent = ACTIVE_SUBJECT_NAME;
+                    stdDisplay.className = "text-sm font-bold text-navy-900";
+                } else {
+                    stdDisplay.textContent = "Belum diatur oleh Guru/Pengawas";
+                    stdDisplay.className = "text-sm font-semibold text-slate-400 italic";
+                }
+            }
+            if (stdBadge) stdBadge.textContent = `${SINGLE_QUESTION_BANK.length} Soal`;
+            if (adminInput) adminInput.value = ACTIVE_SUBJECT_NAME;
+        }
+
+        function updateSingleSubjectName() {
+            const val = document.getElementById('admin-single-subject-input').value.trim();
+            if (!val) {
+                showCustomModal("Nama Mapel Kosong", "Silakan isi nama mata pelajaran ujian terlebih dahulu.", "warning");
+                return;
+            }
+            ACTIVE_SUBJECT_NAME = val;
+            syncSingleSubjectUI();
+            renderAdminQuestionList();
+            showCustomModal("Mata Pelajaran Diperbarui", `Fokus ujian saat ini telah diatur ke mata pelajaran: ${ACTIVE_SUBJECT_NAME}`, "success");
+        }
+
+        /* ============================================================================
+         * 5. FITUR KAMERA PENGAWAS (WEBRTC) UNTUK HP & LAPTOP
+         * ============================================================================ */
+        async function initCamera() {
+            const previewVideo = document.getElementById('preview-video');
+            const examVideo = document.getElementById('exam-live-video');
+            const placeholder = document.getElementById('cam-placeholder');
+            const indicator = document.getElementById('cam-indicator');
+            const badge = document.getElementById('cam-overlay-badge');
+
+            try {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error("API Kamera diblokir pada protokol file lokal.");
+                }
+
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 360 } },
+                    audio: false
+                });
+
+                previewVideo.srcObject = mediaStream;
+                examVideo.srcObject = mediaStream;
+
+                previewVideo.classList.remove('hidden');
+                placeholder.classList.add('hidden');
+                badge.classList.remove('hidden');
+                indicator.classList.remove('bg-rose-500');
+                indicator.classList.add('bg-emerald-400');
+
+                // Deteksi jika kamera dimatikan paksa dari hardware/browser saat ujian
+                const videoTrack = mediaStream.getVideoTracks()[0];
+                if (videoTrack) {
+                    videoTrack.onended = () => {
+                        isCameraReady = false;
+                        if (activeExam.isRunning) {
+                            recordViolation("Kamera pengawas terputus atau dimatikan secara paksa saat ujian berlangsung!");
+                        }
+                    };
+                }
+
+                isCameraReady = true;
+            } catch (err) {
+                // Jika file dibuka langsung sebagai file lokal (file://) di HP/Browser yang memblokir kamera non-HTTPS,
+                // sediakan Mode Simulasi/Fallback agar file HTML tetap berfungsi lancar saat diuji coba secara offline
+                if (window.location.protocol === 'file:') {
+                    isCameraReady = true;
+                    placeholder.innerHTML = `
+                        <i class="ph-fill ph-shield-check text-3xl text-emerald-400 mb-1"></i>
+                        <p class="text-xs text-emerald-300 font-semibold">Mode Offline Lokal Aktif</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Browser membatasi kamera pada mode file://. Gunakan link HTTPS (Netlify/Hosting) saat ujian agar kamera live menyala.</p>
+                    `;
+                    badge.classList.remove('hidden');
+                    indicator.classList.remove('bg-rose-500');
+                    indicator.classList.add('bg-amber-400');
+                    return;
+                }
+
+                isCameraReady = false;
+                showCustomModal(
+                    "Izin Kamera Diperlukan",
+                    "Aplikasi membutuhkan akses kamera depan pada HP atau Laptop Anda untuk fitur pengawasan ujian. Pastikan Anda mengizinkan akses kamera pada browser.",
+                    "warning"
+                );
+            }
+        }
+
+        /* ============================================================================
+         * 6. SISTEM ANTI-CHEAT / BROWSER LOCKDOWN & DETEKSI KAMERA DITUTUP
+         * ============================================================================ */
+        function setupAntiCheatListeners() {
+            // Catat setiap kali siswa menyentuh atau men-scroll layar HP agar tidak memicu false-positive blur
+            const markUserTouchOrScroll = () => {
+                lastTouchOrScrollTime = Date.now();
+            };
+
+            window.addEventListener("scroll", markUserTouchOrScroll, { passive: true });
+            window.addEventListener("touchstart", markUserTouchOrScroll, { passive: true });
+            window.addEventListener("touchmove", markUserTouchOrScroll, { passive: true });
+            window.addEventListener("touchend", markUserTouchOrScroll, { passive: true });
+
+            // 1. Deteksi Perpindahan Tab / Minimize Aplikasi (Akurat di HP & Laptop)
+            document.addEventListener("visibilitychange", function () {
+                if (activeExam.isRunning && document.hidden) {
+                    recordViolation("Terdeteksi keluar dari tab ujian atau meminimalkan aplikasi.");
+                }
+            });
+
+            // 2. Deteksi Pindah Jendela (Khusus Laptop/Desktop, abaikan blur palsu akibat scroll address-bar di HP)
+            window.addEventListener("blur", function () {
+                if (!activeExam.isRunning) return;
+
+                // Deteksi apakah perangkat adalah HP/Tablet layar sentuh
+                const isMobileOrTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || window.innerWidth < 1024;
+                const timeSinceScroll = Date.now() - lastTouchOrScrollTime;
+
+                // Pada HP, scrolling menyebabkan address bar bersembunyi dan memicu event blur palsu.
+                // Jika perangkat adalah HP dan halaman tidak tersembunyi (!document.hidden), jangan anggap scroll sebagai pelanggaran.
+                if (isMobileOrTouch) {
+                    setTimeout(() => {
+                        if (activeExam.isRunning && document.hidden) {
+                            recordViolation("Terdeteksi meninggalkan layar aplikasi ujian di HP.");
+                        }
+                    }, 400);
+                    return;
+                }
+
+                // Pada Laptop/PC, abaikan jika baru saja melakukan scroll dalam 800ms terakhir atau fokus masih di dalam dokumen
+                if (timeSinceScroll < 800) return;
+
+                setTimeout(() => {
+                    if (activeExam.isRunning && !document.hasFocus() && document.hidden) {
+                        recordViolation("Fokus layar berpindah ke jendela atau aplikasi lain.");
+                    }
+                }, 300);
+            });
+        }
+
+        // Sensor pendeteksi apakah lensa kamera ditutup (gelap/tertutup jari/stiker) atau stream mati
+        function startCameraOcclusionMonitor() {
+            if (cameraMonitorInterval) clearInterval(cameraMonitorInterval);
+            darkFrameCounter = 0;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 36;
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+            cameraMonitorInterval = setInterval(() => {
+                if (!activeExam.isRunning) {
+                    clearInterval(cameraMonitorInterval);
+                    return;
+                }
+
+                // Jika siswa sedang aktif men-scroll layar dalam 1.2 detik terakhir di HP,
+                // tunda pengecekan frame sesaat agar jari yang menggeser layar tidak salah terdeteksi menutup kamera
+                if (Date.now() - lastTouchOrScrollTime < 1200) {
+                    return;
+                }
+
+                // Jika berjalan di mode file:// tanpa stream kamera karena pembatasan browser lokal, lewati sensor piksel kamera
+                if (!mediaStream && window.location.protocol === 'file:') {
+                    return;
+                }
+
+                const video = document.getElementById('exam-live-video');
+                const statusBadge = document.getElementById('camera-guard-status');
+                const track = mediaStream ? mediaStream.getVideoTracks()[0] : null;
+
+                // 1. Cek apakah stream kamera dimatikan atau diblokir
+                if (!track || !track.enabled || track.readyState !== 'live' || video.ended) {
+                    if (statusBadge) {
+                        statusBadge.textContent = "KAMERA MATI / TERPUTUS!";
+                        statusBadge.className = "absolute bottom-2 right-2 bg-rose-600/90 px-2 py-0.5 rounded text-[10px] font-mono text-white font-bold";
+                    }
+                    recordViolation("Kamera pengawas tidak aktif atau dimatikan selama ujian!");
+                    return;
+                }
+
+                // Jika video ter-pause otomatis oleh browser HP saat scrolling, putar kembali secara otomatis tanpa menghukum siswa
+                if (video.paused) {
+                    video.play().catch(() => {});
+                    return;
+                }
+
+                // 2. Analisis piksel frame kamera untuk mendeteksi penutupan fisik (lensa gelap/tertutup rapat)
+                if (video.readyState >= 2) {
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const frameData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+
+                    let totalLuminance = 0;
+                    let pixelCount = frameData.length / 4;
+
+                    for (let i = 0; i < frameData.length; i += 4) {
+                        const r = frameData[i];
+                        const g = frameData[i + 1];
+                        const b = frameData[i + 2];
+                        totalLuminance += (0.299 * r + 0.587 * g + 0.114 * b);
+                    }
+
+                    const avgBrightness = totalLuminance / pixelCount;
+
+                    // Hitung standar deviasi (variasi warna/cahaya) untuk mendeteksi jika kamera ditempel stiker/jari satu warna
+                    let varianceSum = 0;
+                    for (let i = 0; i < frameData.length; i += 4) {
+                        const lum = 0.299 * frameData[i] + 0.587 * frameData[i + 1] + 0.114 * frameData[i + 2];
+                        varianceSum += Math.pow(lum - avgBrightness, 2);
+                    }
+                    const stdDev = Math.sqrt(varianceSum / pixelCount);
+
+                    // Jika rata-rata kecerahan sangat gelap (< 12) ATAU gambar sangat rata/polos karena ditutupi objek menempel (stdDev < 2.8)
+                    if (avgBrightness < 12 || stdDev < 2.8) {
+                        darkFrameCounter++;
+                        if (statusBadge) {
+                            statusBadge.textContent = `PERINGATAN: LENSA TERTUTUP (${darkFrameCounter}/3)`;
+                            statusBadge.className = "absolute bottom-2 right-2 bg-amber-500/95 px-2 py-0.5 rounded text-[10px] font-mono text-navy-900 font-bold";
+                        }
+
+                        // Jika tertutup berturut-turut selama 3 siklus pemeriksaan (~7.5 detik), baru catat sebagai pelanggaran!
+                        if (darkFrameCounter >= 3) {
+                            darkFrameCounter = 0;
+                            recordViolation("Terdeteksi lensa kamera ditutup atau gelap! Harap buka penutup kamera agar wajah terlihat jelas.");
+                        }
+                    } else {
+                        darkFrameCounter = 0;
+                        if (statusBadge) {
+                            statusBadge.textContent = "AI Optical Guard: NORMAL";
+                            statusBadge.className = "absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-mono text-emerald-400";
+                        }
+                    }
+                }
+            }, 2500);
+        }
+
+        function handleContextMenu(e) {
+            if (activeExam.isRunning) {
+                e.preventDefault();
+                return false;
+            }
+            return true;
+        }
+
+        function recordViolation(reason) {
+            if (!activeExam.isRunning) return;
+
+            // Cooldown 3 detik antar pencatatan pelanggaran agar 1 kejadian tidak terhitung 2 kali berturut-turut
+            const now = Date.now();
+            if (now - lastViolationTime < 3000) return;
+            lastViolationTime = now;
+
+            activeExam.violations += 1;
+
+            const badge = document.getElementById('exam-violation-count');
+            badge.textContent = `${activeExam.violations} / 3 Pelanggaran`;
+
+            if (activeExam.violations >= 3) {
+                showCustomModal(
+                    "Batas Pelanggaran Tercapai!",
+                    `${reason} Anda telah melakukan 3 kali pelanggaran keamanan. Sistem otomatis mengumpulkan jawaban Anda sekarang.`,
+                    "danger",
+                    () => finishAndSubmitExam()
+                );
+            } else {
+                showCustomModal(
+                    `Peringatan Pengawas (${activeExam.violations}/3)`,
+                    `${reason} Mohon tetap berada di layar ujian. Jika mencapai 3 kali pelanggaran, ujian akan dihentikan otomatis.`,
+                    "warning"
+                );
+            }
+        }
+
+        /* ============================================================================
+         * 7. ALUR MULAI & PENGERJAAN UJIAN SISWA
+         * ============================================================================ */
+        async function handleStudentStartExam(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('std-name').value.trim();
+            const nisn = document.getElementById('std-nisn').value.trim();
+            const className = document.getElementById('std-class').value;
+            const subject = ACTIVE_SUBJECT_NAME.trim();
+            const inputPasscode = document.getElementById('std-passcode').value;
+
+            // Validasi apakah Mata Pelajaran sudah diatur oleh Guru/Pengawas
+            if (!subject) {
+                showCustomModal(
+                    "Mata Pelajaran Belum Diatur",
+                    "Guru atau Pengawas belum memasukkan nama Mata Pelajaran Ujian Aktif pada Dashboard Pengawas.",
+                    "warning"
+                );
+                return;
+            }
+
+            // Validasi Passcode Siswa (Bandingkan Hash)
+            if (simpleHash(inputPasscode) !== SECURITY_STATE.studentPassHash) {
+                showCustomModal(
+                    "Passcode Ujian Tidak Valid",
+                    "Passcode yang Anda masukkan salah. Silakan tanyakan Passcode ruang ujian yang benar kepada Pengawas.",
+                    "danger"
+                );
+                return;
+            }
+
+            // Pastikan soal tersedia
+            if (SINGLE_QUESTION_BANK.length === 0) {
+                showCustomModal(
+                    "Bank Soal Belum Tersedia",
+                    `Belum ada naskah soal untuk mata pelajaran ${subject}. Hubungi Guru atau Pengawas.`,
+                    "warning"
+                );
+                return;
+            }
+
+            // Aktifkan kamera otomatis jika belum aktif
+            if (!isCameraReady) {
+                await initCamera();
+                if (!isCameraReady) return;
+            }
+
+            // Coba masuk mode Fullscreen agar lebih aman di HP/Laptop
+            try {
+                if (document.documentElement.requestFullscreen) {
+                    await document.documentElement.requestFullscreen();
+                }
+            } catch (_) {
+                // Abaikan jika diblokir oleh kebijakan iframe
+            }
+
+            // Set State Ujian Aktif
+            activeExam = {
+                isRunning: true,
+                studentName: name,
+                nisn: nisn,
+                className: className,
+                subject: subject,
+                questions: JSON.parse(JSON.stringify(SINGLE_QUESTION_BANK)),
+                currentIndex: 0,
+                answers: {},
+                doubts: {},
+                remainingSeconds: SECURITY_STATE.examDurationMinutes * 60,
+                violations: 0
+            };
+
+            document.getElementById('exam-active-subject').textContent = subject;
+            document.getElementById('exam-student-info').textContent = `${name} • ${nisn} (Kelas ${className})`;
+            document.getElementById('exam-violation-count').textContent = `0 / 3 Pelanggaran`;
+            document.getElementById('std-passcode').value = "";
+
+            switchView('student-exam');
+            renderCurrentQuestion();
+            renderQuestionNavGrid();
+            startExamCountdown();
+            startCameraOcclusionMonitor();
+            startLiveCameraSnapshotSender();
+        }
+
+        function startExamCountdown() {
+            if (examTimerInterval) clearInterval(examTimerInterval);
+            updateTimerDisplay();
+
+            examTimerInterval = setInterval(() => {
+                if (!activeExam.isRunning) {
+                    clearInterval(examTimerInterval);
+                    return;
+                }
+                activeExam.remainingSeconds--;
+                updateTimerDisplay();
+
+                if (activeExam.remainingSeconds <= 0) {
+                    clearInterval(examTimerInterval);
+                    showCustomModal(
+                        "Waktu Ujian Habis",
+                        "Waktu pengerjaan ujian telah berakhir. Sistem akan otomatis menyimpan dan mengirim jawaban Anda.",
+                        "warning",
+                        () => finishAndSubmitExam()
+                    );
+                }
+            }, 1000);
+        }
+
+        function updateTimerDisplay() {
+            const mins = Math.floor(activeExam.remainingSeconds / 60);
+            const secs = activeExam.remainingSeconds % 60;
+            const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            document.getElementById('exam-timer').textContent = formatted;
+        }
+
+        function renderCurrentQuestion() {
+            const idx = activeExam.currentIndex;
+            const total = activeExam.questions.length;
+            const item = activeExam.questions[idx];
+
+            document.getElementById('q-current-number').textContent = idx + 1;
+            document.getElementById('q-total-badge').textContent = `dari ${total} Soal`;
+            document.getElementById('question-text').textContent = item.q;
+
+            const selectedAns = activeExam.answers[idx] || null;
+            const optionsContainer = document.getElementById('question-options');
+            optionsContainer.innerHTML = '';
+
+            ['A', 'B', 'C', 'D'].forEach(letter => {
+                const optText = item.options[letter] || "-";
+                const isSelected = selectedAns === letter;
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.onclick = () => selectAnswer(letter);
+                btn.className = `w-full text-left p-4 rounded-2xl border-2 transition flex items-start gap-3.5 ${
+                    isSelected
+                        ? 'border-dhammasoka-500 bg-dhammasoka-50/80 text-navy-900 shadow-sm'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/60 text-slate-700'
+                }`;
+
+                btn.innerHTML = `
+                    <span class="w-8 h-8 rounded-xl font-bold text-sm flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-dhammasoka-500 text-navy-900' : 'bg-white border border-slate-300 text-slate-600'
+                    }">${letter}</span>
+                    <span class="text-sm sm:text-base font-medium leading-snug pt-0.5">${optText}</span>
+                `;
+                optionsContainer.appendChild(btn);
+            });
+
+            document.getElementById('chk-doubt').checked = !!activeExam.doubts[idx];
+            document.getElementById('btn-prev-q').disabled = (idx === 0);
+            document.getElementById('btn-next-q').innerHTML = (idx === total - 1)
+                ? `<span>Kumpulkan Ujian</span> <i class="ph-bold ph-check-circle"></i>`
+                : `<span>Soal Selanjutnya</span> <i class="ph-bold ph-arrow-right"></i>`;
+        }
+
+        function selectAnswer(letter) {
+            activeExam.answers[activeExam.currentIndex] = letter;
+            renderCurrentQuestion();
+            renderQuestionNavGrid();
+        }
+
+        function toggleDoubtCurrentQuestion() {
+            const chk = document.getElementById('chk-doubt').checked;
+            activeExam.doubts[activeExam.currentIndex] = chk;
+            renderQuestionNavGrid();
+        }
+
+        function navigateQuestion(step) {
+            const nextIdx = activeExam.currentIndex + step;
+            if (nextIdx >= activeExam.questions.length) {
+                openSubmitConfirmation();
+                return;
+            }
+            if (nextIdx >= 0 && nextIdx < activeExam.questions.length) {
+                activeExam.currentIndex = nextIdx;
+                renderCurrentQuestion();
+                renderQuestionNavGrid();
+            }
+        }
+
+        function renderQuestionNavGrid() {
+            const grid = document.getElementById('question-nav-grid');
+            grid.innerHTML = '';
+
+            let answeredCount = 0;
+
+            activeExam.questions.forEach((_, i) => {
+                const isCurrent = i === activeExam.currentIndex;
+                const isAnswered = !!activeExam.answers[i];
+                const isDoubt = !!activeExam.doubts[i];
+
+                if (isAnswered) answeredCount++;
+
+                let colorClass = 'bg-slate-100 text-slate-700 border-slate-300';
+                if (isDoubt) {
+                    colorClass = 'bg-amber-400 text-navy-900 border-amber-500';
+                } else if (isAnswered) {
+                    colorClass = 'bg-emerald-600 text-white border-emerald-700';
+                }
+
+                const ringClass = isCurrent ? 'ring-2 ring-offset-2 ring-navy-900 font-extrabold' : 'font-semibold';
+
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `h-10 rounded-xl border text-xs transition relative ${colorClass} ${ringClass}`;
+                btn.textContent = i + 1;
+                btn.onclick = () => {
+                    activeExam.currentIndex = i;
+                    renderCurrentQuestion();
+                    renderQuestionNavGrid();
+                };
+                grid.appendChild(btn);
+            });
+
+            document.getElementById('answered-progress').textContent = `${answeredCount}/${activeExam.questions.length} Terjawab`;
+        }
+
+        function changeFontSize(sizeClass) {
+            const qText = document.getElementById('question-text');
+            qText.classList.remove('text-sm', 'text-base', 'text-lg');
+            qText.classList.add(sizeClass);
+        }
+
+        function openSubmitConfirmation() {
+            const total = activeExam.questions.length;
+            const answered = Object.keys(activeExam.answers).length;
+            const unanswered = total - answered;
+
+            const msg = unanswered > 0
+                ? `Masih ada ${unanswered} soal yang belum Anda jawab. Apakah Anda yakin ingin mengakhiri ujian dan mengirim nilai sekarang?`
+                : `Seluruh ${total} soal telah terjawab. Apakah Anda yakin ingin mengumpulkan ujian sekarang?`;
+
+            showCustomModal(
+                "Konfirmasi Pengumpulan Ujian",
+                msg,
+                "confirm",
+                () => finishAndSubmitExam()
+            );
+        }
+
+        /* ============================================================================
+         * 8. PENILAIAN SKOR & INTEGRASI GOOGLE APPS SCRIPT / GOOGLE SHEETS
+         * ============================================================================ */
+        async function finishAndSubmitExam() {
+            // Kirim status kamera terakhir bahwa siswa telah selesai ujian
+            await captureAndSendStudentSnapshot("SELESAI UJIAN");
+
+            activeExam.isRunning = false;
+            if (examTimerInterval) clearInterval(examTimerInterval);
+            if (cameraMonitorInterval) clearInterval(cameraMonitorInterval);
+            if (snapshotSenderInterval) clearInterval(snapshotSenderInterval);
+
+            // Hitung Skor
+            let correctCount = 0;
+            const total = activeExam.questions.length;
+
+            activeExam.questions.forEach((qObj, idx) => {
+                const studentAns = activeExam.answers[idx];
+                if (studentAns && studentAns.toUpperCase() === qObj.answer.toUpperCase()) {
+                    correctCount++;
+                }
+            });
+
+            const finalScore = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+
+            // Keluar dari Fullscreen jika aktif
+            try {
+                if (document.fullscreenElement && document.exitFullscreen) {
+                    await document.exitFullscreen();
+                }
+            } catch (_) {}
+
+            // Tampilkan di halaman hasil
+            document.getElementById('res-name').textContent = activeExam.studentName;
+            document.getElementById('res-class').textContent = `${activeExam.nisn} / Kelas ${activeExam.className}`;
+            document.getElementById('res-subject').textContent = activeExam.subject;
+            document.getElementById('res-correct').textContent = `${correctCount} dari ${total} Soal`;
+            document.getElementById('res-score').textContent = finalScore;
+
+            const payload = {
+                timestamp: new Date().toLocaleString('id-ID'),
+                name: activeExam.studentName,
+                nisn: activeExam.nisn,
+                className: activeExam.className,
+                subject: activeExam.subject,
+                correct: correctCount,
+                total: total,
+                score: finalScore,
+                violations: activeExam.violations,
+                cloudSynced: false
+            };
+
+            switchView('student-result');
+
+            // Kirim ke Google Sheets via Google Apps Script
+            await sendScoreToGoogleSheets(payload);
+        }
+
+        async function sendScoreToGoogleSheets(payload) {
+            const statusBox = document.getElementById('sheets-sync-status');
+
+            if (!SECURITY_STATE.googleAppsScriptUrl) {
+                statusBox.className = "mb-6 p-3.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-amber-50 text-amber-800 border border-amber-200";
+                statusBox.innerHTML = `<i class="ph-fill ph-info text-lg"></i> <span>Skor tersimpan di perangkat. (URL Google Apps Script belum diatur oleh Pengawas).</span>`;
+                SCORE_LOGS.unshift(payload);
+                renderScoreLogs();
+                return;
+            }
+
+            statusBox.className = "mb-6 p-3.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-blue-50 text-blue-700 border border-blue-200";
+            statusBox.innerHTML = `<i class="ph ph-spinner animate-spin text-lg"></i> <span>Mengirim nilai ke Google Sheets...</span>`;
+
+            try {
+                await fetch(SECURITY_STATE.googleAppsScriptUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                payload.cloudSynced = true;
+                statusBox.className = "mb-6 p-3.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200";
+                statusBox.innerHTML = `<i class="ph-fill ph-check-circle text-lg"></i> <span>Skor berhasil dicatat ke Google Sheets!</span>`;
+            } catch (err) {
+                statusBox.className = "mb-6 p-3.5 rounded-xl text-xs font-medium flex items-center justify-center gap-2 bg-rose-50 text-rose-700 border border-rose-200";
+                statusBox.innerHTML = `<i class="ph-fill ph-warning text-lg"></i> <span>Gagal menghubungi Google Sheets, namun skor telah dicadangkan di Dashboard Pengawas.</span>`;
+            }
+
+            SCORE_LOGS.unshift(payload);
+            renderScoreLogs();
+        }
+
+        function resetToStudentLogin() {
+            document.getElementById('form-student-login').reset();
+            switchView('student-login');
+        }
+
+        /* ============================================================================
+         * 9. PORTAL PENGAWAS / GURU & PARSING FILE WORD (.DOCX)
+         * ============================================================================ */
+        function handleProctorLogin(e) {
+            e.preventDefault();
+            const input = document.getElementById('proc-passcode-input').value;
+
+            if (simpleHash(input) !== SECURITY_STATE.proctorPassHash) {
+                showCustomModal(
+                    "Akses Ditolak",
+                    "Passcode Pengawas yang Anda masukkan tidak sesuai. Siswa tidak diizinkan mengakses halaman ini.",
+                    "danger"
+                );
+                return;
+            }
+
+            document.getElementById('proc-passcode-input').value = "";
+            switchView('proctor-dashboard');
+            renderAdminQuestionList();
+        }
+
+        function switchProctorTab(tabId) {
+            ['tab-word', 'tab-live-cam', 'tab-sheets', 'tab-security'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+
+            const activeClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-dhammasoka-500 text-navy-900 transition flex items-center gap-1.5";
+            const inactiveClass = "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-slate-800 text-slate-200 hover:bg-slate-700 transition flex items-center gap-1.5";
+
+            document.getElementById('btn-tab-word').className = (tabId === 'tab-word') ? activeClass : inactiveClass;
+            document.getElementById('btn-tab-live-cam').className = (tabId === 'tab-live-cam') ? activeClass : inactiveClass;
+            document.getElementById('btn-tab-sheets').className = (tabId === 'tab-sheets') ? activeClass : inactiveClass;
+            document.getElementById('btn-tab-security').className = (tabId === 'tab-security') ? activeClass : inactiveClass;
+
+            // Jika Pengawas membuka tab Live Kamera, jalankan auto-refresh CCTV setiap 4 detik
+            if (proctorCctvPollInterval) clearInterval(proctorCctvPollInterval);
+            if (tabId === 'tab-live-cam') {
+                fetchLiveCameraFeedsFromCloud();
+                proctorCctvPollInterval = setInterval(fetchLiveCameraFeedsFromCloud, 4000);
+            }
+        }
+
+        // Parsing File Microsoft Word (.docx) menggunakan Mammoth.js
+        function handleWordUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('word-filename-display').textContent = `Memproses: ${file.name}...`;
+
+            const reader = new FileReader();
+            reader.onload = function(loadEvent) {
+                const arrayBuffer = loadEvent.target.result;
+                mammoth.extractRawText({ arrayBuffer: arrayBuffer })
+                    .then(function(result) {
+                        const rawText = result.value;
+                        const parsedQuestions = parseQuestionsFromText(rawText);
+
+                        if (parsedQuestions.length === 0) {
+                            showCustomModal(
+                                "Format Soal Tidak Terbaca",
+                                "Pastikan naskah Word (.docx) memiliki penomoran soal, pilihan A/B/C/D, dan baris KUNCI: A/B/C/D sesuai contoh format.",
+                                "warning"
+                            );
+                            return;
+                        }
+
+                        SINGLE_QUESTION_BANK.push(...parsedQuestions);
+                        syncSingleSubjectUI();
+                        renderAdminQuestionList();
+
+                        document.getElementById('word-filename-display').textContent = `Berhasil mengimpor ${parsedQuestions.length} soal dari ${file.name}`;
+                        showCustomModal(
+                            "Impor Naskah Word Berhasil!",
+                            `Sebanyak ${parsedQuestions.length} butir soal berhasil diekstrak dari dokumen Word dan ditambahkan ke mata pelajaran ${ACTIVE_SUBJECT_NAME}.`,
+                            "success"
+                        );
+                    })
+                    .catch(function() {
+                        showCustomModal(
+                            "Gagal Membaca File Word",
+                            "Pastikan file yang diunggah berformat Microsoft Word (.docx) yang valid.",
+                            "danger"
+                        );
+                    });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Parser cerdas untuk mengekstrak soal pilihan ganda dari teks Word
+        function parseQuestionsFromText(text) {
+            const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const questions = [];
+            let currentQ = null;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                // Deteksi baris KUNCI / JAWABAN
+                const keyMatch = line.match(/^(?:KUNCI|JAWABAN|ANSWER)\s*[:=]\s*([A-D])/i);
+                if (keyMatch && currentQ) {
+                    currentQ.answer = keyMatch[1].toUpperCase();
+                    if (currentQ.q && currentQ.options.A && currentQ.options.B) {
+                        questions.push(currentQ);
+                    }
+                    currentQ = null;
+                    continue;
+                }
+
+                // Deteksi baris Opsi A, B, C, D
+                const optMatch = line.match(/^([A-D])[\.\)\-]\s*(.+)$/i);
+                if (optMatch && currentQ) {
+                    const optLetter = optMatch[1].toUpperCase();
+                    currentQ.options[optLetter] = optMatch[2].trim();
+                    continue;
+                }
+
+                // Deteksi nomor soal baru (misal: "1. Pertanyaan...")
+                const qMatch = line.match(/^\d+[\.\)]\s*(.+)$/);
+                if (qMatch) {
+                    if (currentQ && currentQ.q && currentQ.options.A && currentQ.answer) {
+                        questions.push(currentQ);
+                    }
+                    currentQ = {
+                        q: qMatch[1].trim(),
+                        options: { A: "", B: "", C: "", D: "" },
+                        answer: "A"
+                    };
+                } else if (currentQ && !currentQ.options.A) {
+                    // Lanjutan teks pertanyaan multi-baris
+                    currentQ.q += " " + line;
+                }
+            }
+
+            if (currentQ && currentQ.q && currentQ.options.A) {
+                questions.push(currentQ);
+            }
+
+            return questions;
+        }
+
+        function handleAddManualQuestion(e) {
+            e.preventDefault();
+            const qText = document.getElementById('manual-q-text').value.trim();
+            const optA = document.getElementById('manual-opt-a').value.trim();
+            const optB = document.getElementById('manual-opt-b').value.trim();
+            const optC = document.getElementById('manual-opt-c').value.trim();
+            const optD = document.getElementById('manual-opt-d').value.trim();
+            const key = document.getElementById('manual-key').value;
+
+            SINGLE_QUESTION_BANK.push({
+                q: qText,
+                options: { A: optA, B: optB, C: optC, D: optD },
+                answer: key
+            });
+
+            e.target.reset();
+            syncSingleSubjectUI();
+            renderAdminQuestionList();
+        }
+
+        function renderAdminQuestionList() {
+            const list = SINGLE_QUESTION_BANK;
+
+            document.getElementById('admin-bank-title').textContent = ACTIVE_SUBJECT_NAME
+                ? `Bank Soal: ${ACTIVE_SUBJECT_NAME}`
+                : `Bank Soal (Mata Pelajaran Belum Diisi)`;
+            document.getElementById('admin-q-count').textContent = `${list.length} Soal`;
+
+            const container = document.getElementById('admin-question-list');
+            container.innerHTML = '';
+
+            if (list.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="ph ph-files text-4xl mb-2"></i>
+                        <p class="text-xs">Belum ada soal pada mata pelajaran ini. Silakan unggah file Word (.docx) atau tambah manual.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-2";
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <p class="font-bold text-slate-800 leading-relaxed"><span class="text-dhammasoka-700">#${index + 1}.</span> ${item.q}</p>
+                        <button onclick="deleteQuestionItem(${index})" class="text-rose-500 hover:text-rose-700 p-1">
+                            <i class="ph-bold ph-trash text-base"></i>
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-slate-600 pl-2">
+                        <div class="${item.answer === 'A' ? 'font-bold text-emerald-700' : ''}">A. ${item.options.A}</div>
+                        <div class="${item.answer === 'B' ? 'font-bold text-emerald-700' : ''}">B. ${item.options.B}</div>
+                        <div class="${item.answer === 'C' ? 'font-bold text-emerald-700' : ''}">C. ${item.options.C}</div>
+                        <div class="${item.answer === 'D' ? 'font-bold text-emerald-700' : ''}">D. ${item.options.D}</div>
+                    </div>
+                    <div class="pt-1">
+                        <span class="inline-block bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-[10px]">Kunci Jawaban: ${item.answer}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function deleteQuestionItem(index) {
+            SINGLE_QUESTION_BANK.splice(index, 1);
+            syncSingleSubjectUI();
+            renderAdminQuestionList();
+        }
+
+        function clearSubjectQuestions() {
+            showCustomModal(
+                "Hapus Seluruh Bank Soal?",
+                `Apakah Anda yakin ingin mengosongkan seluruh soal pada mata pelajaran ${ACTIVE_SUBJECT_NAME}?`,
+                "confirm",
+                () => {
+                    SINGLE_QUESTION_BANK = [];
+                    syncSingleSubjectUI();
+                    renderAdminQuestionList();
+                }
+            );
+        }
+
+        function downloadSampleWordTemplate() {
+            const sampleContent = `1. Ibu kota provinsi Kalimantan Selatan adalah...
+A. Banjarmasin
+B. Banjarbaru
+C. Martapura
+D. Balikpapan
+KUNCI: B
+
+2. Hasil dari 15 x 4 + 10 adalah...
+A. 60
+B. 70
+C. 80
+D. 90
+KUNCI: B`;
+
+            const blob = new Blob([sampleContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Contoh_Format_Naskah_Soal_SMP.txt";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        /* ============================================================================
+         * 10. PENGATURAN GOOGLE SHEETS & PASSCODE BARU
+         * ============================================================================ */
+        function saveGasUrl() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            SECURITY_STATE.googleAppsScriptUrl = url;
+            showCustomModal(
+                "Endpoint Tersimpan",
+                "URL Web App Google Apps Script berhasil disimpan. Setiap siswa yang menyelesaikan ujian akan otomatis tercatat ke Google Sheets Anda.",
+                "success"
+            );
+        }
+
+        async function testGasConnection() {
+            const url = document.getElementById('gas-url-input').value.trim();
+            if (!url) {
+                showCustomModal("URL Kosong", "Masukkan URL Web App Google Apps Script terlebih dahulu.", "warning");
+                return;
+            }
+            SECURITY_STATE.googleAppsScriptUrl = url;
+
+            const dummyPayload = {
+                timestamp: new Date().toLocaleString('id-ID'),
+                name: "Siswa Uji Coba (Test)",
+                nisn: "0012345678",
+                className: "IX-A",
+                subject: "Informatika",
+                correct: 10,
+                total: 10,
+                score: 100,
+                violations: 0,
+                cloudSynced: true
+            };
+
+            try {
+                await fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(dummyPayload)
+                });
+                SCORE_LOGS.unshift(dummyPayload);
+                renderScoreLogs();
+                showCustomModal(
+                    "Data Uji Coba Terkirim",
+                    "Data nilai uji coba telah dikirim ke Google Apps Script. Silakan periksa baris baru pada Google Sheets Anda.",
+                    "success"
+                );
+            } catch (e) {
+                showCustomModal("Koneksi Gagal", "Pastikan URL Web App memiliki akses 'Anyone' (Siapa saja) saat di-deploy.", "danger");
+            }
+        }
+
+        function copyGasScript() {
+            const code = document.getElementById('gas-code-block').innerText;
+            const tempInput = document.createElement('textarea');
+            tempInput.value = code;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+
+            showCustomModal("Berhasil Disalin", "Kode Google Apps Script telah disalin ke clipboard Anda.", "success");
+        }
+
+        function renderScoreLogs() {
+            const tbody = document.getElementById('score-log-tbody');
+            tbody.innerHTML = '';
+
+            if (SCORE_LOGS.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400">Belum ada data nilai siswa pada sesi ini.</td></tr>`;
+                return;
+            }
+
+            SCORE_LOGS.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="py-2.5 px-3 font-semibold text-slate-800">${row.name} <span class="block text-[10px] text-slate-400">${row.nisn}</span></td>
+                    <td class="py-2.5 px-3">${row.className}</td>
+                    <td class="py-2.5 px-3">${row.subject}</td>
+                    <td class="py-2.5 px-3 font-extrabold text-navy-900">${row.score}</td>
+                    <td class="py-2.5 px-3">
+                        ${row.cloudSynced
+                            ? '<span class="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-bold">Terkirim ke Sheets</span>'
+                            : '<span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-[10px] font-bold">Tersimpan Lokal</span>'}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function exportLocalScoresCSV() {
+            if (SCORE_LOGS.length === 0) {
+                showCustomModal("Data Kosong", "Belum ada skor ujian siswa untuk diunduh.", "warning");
+                return;
+            }
+            let csv = "Waktu,Nama Siswa,NISN,Kelas,Mata Pelajaran,Benar,Total Soal,Skor Akhir,Pelanggaran\n";
+            SCORE_LOGS.forEach(r => {
+                csv += `"${r.timestamp}","${r.name}","${r.nisn}","${r.className}","${r.subject}",${r.correct},${r.total},${r.score},${r.violations}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = "Rekap_Skor_Dhammasoka_Exam.csv";
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function handleUpdatePasscodes(e) {
+            e.preventDefault();
+            const newStdPass = document.getElementById('new-student-passcode').value;
+            const newProcPass = document.getElementById('new-proctor-passcode').value;
+            const duration = parseInt(document.getElementById('exam-duration-input').value, 10) || 60;
+
+            SECURITY_STATE.studentPassHash = simpleHash(newStdPass);
+            SECURITY_STATE.proctorPassHash = simpleHash(newProcPass);
+            SECURITY_STATE.examDurationMinutes = duration;
+
+            document.getElementById('new-student-passcode').value = "";
+            document.getElementById('new-proctor-passcode').value = "";
+
+            showCustomModal(
+                "Pengaturan Keamanan Diperbarui",
+                "Passcode Siswa, Passcode Pengawas, dan durasi ujian telah berhasil diperbarui serta dienkripsi.",
+                "success"
+            );
+        }
+
+        /* ============================================================================
+         * 11. NAVIGASI VIEW & UTILITAS MODAL
+         * ============================================================================ */
+        function switchView(viewName) {
+            const views = [
+                'view-student-login',
+                'view-student-exam',
+                'view-student-result',
+                'view-proctor-login',
+                'view-proctor-dashboard'
+            ];
+            views.forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+            const btnProctor = document.getElementById('btn-header-proctor');
+            const btnHome = document.getElementById('btn-header-home');
+
+            if (viewName === 'student-login') {
+                btnProctor.classList.remove('hidden');
+                btnHome.classList.add('hidden');
+            } else {
+                btnProctor.classList.add('hidden');
+                btnHome.classList.remove('hidden');
+                btnHome.classList.add('flex');
+            }
+        }
+
+        function confirmExitToHome() {
+            if (activeExam.isRunning) {
+                showCustomModal(
+                    "Ujian Sedang Berlangsung!",
+                    "Anda tidak dapat keluar sebelum mengumpulkan jawaban ujian. Apakah Anda ingin mengumpulkan ujian sekarang?",
+                    "confirm",
+                    () => finishAndSubmitExam()
+                );
+            } else {
+                switchView('student-login');
+            }
+        }
+
+        function togglePasswordVisibility(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.replace("ph-eye", "ph-eye-slash");
+            } else {
+                input.type = "password";
+                icon.classList.replace("ph-eye-slash", "ph-eye");
+            }
+        }
+
+        let modalConfirmCallback = null;
+
+        function showCustomModal(title, message, type = "info", onConfirm = null) {
+            const modal = document.getElementById('custom-modal');
+            const iconBox = document.getElementById('modal-icon-box');
+            const icon = document.getElementById('modal-icon');
+            const btnCancel = document.getElementById('modal-btn-cancel');
+            const btnOk = document.getElementById('modal-btn-ok');
+
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            modalConfirmCallback = onConfirm;
+
+            btnCancel.classList.add('hidden');
+            btnOk.textContent = "Mengerti";
+
+            if (type === "danger") {
+                iconBox.className = "w-11 h-11 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center shrink-0";
+                icon.className = "ph-fill ph-x-circle text-2xl";
+            } else if (type === "success") {
+                iconBox.className = "w-11 h-11 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0";
+                icon.className = "ph-fill ph-check-circle text-2xl";
+            } else if (type === "confirm") {
+                iconBox.className = "w-11 h-11 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0";
+                icon.className = "ph-fill ph-question text-2xl";
+                btnCancel.classList.remove('hidden');
+                btnOk.textContent = "Ya, Lanjutkan";
+            } else {
+                iconBox.className = "w-11 h-11 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center shrink-0";
+                icon.className = "ph-fill ph-warning-circle text-2xl";
+            }
+
+            btnOk.onclick = () => {
+                closeCustomModal();
+                if (typeof modalConfirmCallback === "function") {
+                    modalConfirmCallback();
+                }
+            };
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCustomModal() {
+            const modal = document.getElementById('custom-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+    </script>
+
+</body></html>
